@@ -135,17 +135,24 @@ export function MyPRs() {
 
   const reviewingPrs = useMemo(() => {
     return allFetchedPrs.filter((pr) =>
+      pr.status !== 'completed' &&
       reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId))
     );
   }, [allFetchedPrs, reviewingPrIds]);
 
   const reviewedPrs = useMemo(() => {
-    if (!allAssigned) return [];
-    return allAssigned.filter((pr) => {
+    const voted = (allAssigned ?? []).filter((pr) => {
       const myReview = pr.reviewers.find((r) => r.id === userId);
       return myReview && myReview.vote !== 0;
     });
-  }, [allAssigned, userId]);
+    const completedReviewing = allFetchedPrs.filter((pr) =>
+      pr.status === 'completed' &&
+      reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId))
+    );
+    const seen = new Set(voted.map((pr) => pr.pullRequestId));
+    const merged = [...voted, ...completedReviewing.filter((pr) => !seen.has(pr.pullRequestId))];
+    return merged.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
+  }, [allAssigned, allFetchedPrs, reviewingPrIds, userId]);
 
   const allPrs = tab === 'created' ? allCreated
     : tab === 'assigned' ? allAssigned
