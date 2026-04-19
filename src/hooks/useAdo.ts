@@ -110,26 +110,35 @@ export function useMyPullRequests(status: string = 'active', minTime?: string) {
   return queries;
 }
 
-export function useFollowedUserActivity() {
-  const { isConfigured } = useConfiguredClient();
+export function useFeedActivity() {
+  const { isConfigured, userId } = useConfiguredClient();
   const follows = useFollowsStore((s) => s.users);
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
+  const userName = useSettingsStore((s) => s.userDisplayName);
 
   return useQuery({
-    queryKey: ['followedActivity', follows.map((f) => f.id), selectedProjects.map((p) => p.name)],
+    queryKey: ['feedActivity', userId, follows.map((f) => f.id), selectedProjects.map((p) => p.name)],
     queryFn: async () => {
-      if (follows.length === 0 || selectedProjects.length === 0) return [];
+      if (selectedProjects.length === 0) return [];
 
-      const items: {
+      type FeedItem = {
         id: string;
         type: 'pr_created' | 'pr_completed' | 'pr_approved' | 'pr_approved_suggestions' | 'pr_rejected' | 'pr_waiting';
         user: { id: string; displayName: string; uniqueName: string; imageUrl: string };
         pullRequest: Awaited<ReturnType<typeof api.getProjectPullRequests>>[0];
         timestamp: string;
-      }[] = [];
+        isSelf: boolean;
+      };
+
+      const items: FeedItem[] = [];
+
+      const allUsers = [
+        ...(userId ? [{ id: userId, displayName: userName, uniqueName: '', imageUrl: '', isSelf: true }] : []),
+        ...follows.map((u) => ({ ...u, isSelf: false })),
+      ];
 
       await Promise.all(
-        follows.map(async (user) => {
+        allUsers.map(async (user) => {
           await Promise.all(
             selectedProjects.map(async (project) => {
               const [created, reviewing] = await Promise.all([
@@ -153,23 +162,25 @@ export function useFollowedUserActivity() {
                   user: pr.createdBy,
                   pullRequest: pr,
                   timestamp: pr.status === 'completed' && pr.closedDate ? pr.closedDate : pr.creationDate,
+                  isSelf: user.isSelf,
                 });
               }
 
               for (const pr of reviewing) {
                 if (pr.createdBy.id === user.id) continue;
-                const myReview = pr.reviewers.find((r) => r.id === user.id);
-                if (!myReview || myReview.vote === 0) continue;
-                const type = myReview.vote >= 10 ? 'pr_approved' as const
-                  : myReview.vote >= 5 ? 'pr_approved_suggestions' as const
-                  : myReview.vote <= -10 ? 'pr_rejected' as const
+                const review = pr.reviewers.find((r) => r.id === user.id);
+                if (!review || review.vote === 0) continue;
+                const type = review.vote >= 10 ? 'pr_approved' as const
+                  : review.vote >= 5 ? 'pr_approved_suggestions' as const
+                  : review.vote <= -10 ? 'pr_rejected' as const
                   : 'pr_waiting' as const;
                 items.push({
                   id: `${user.id}-review-${pr.pullRequestId}`,
                   type,
-                  user: { id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl },
+                  user: user.isSelf ? pr.reviewers.find((r) => r.id === user.id)! : { id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl },
                   pullRequest: pr,
                   timestamp: pr.creationDate,
+                  isSelf: user.isSelf,
                 });
               }
             })
@@ -180,7 +191,7 @@ export function useFollowedUserActivity() {
       items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return items;
     },
-    enabled: isConfigured && follows.length > 0 && selectedProjects.length > 0,
+    enabled: isConfigured && selectedProjects.length > 0,
     staleTime: 1000 * 60 * 3,
   });
 }

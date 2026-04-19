@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye, ThumbsDown, Clock } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye, ThumbsDown, Clock, EyeOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useFollowsStore } from '../store/follows';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
-import { useFollowedUserActivity } from '../hooks/useAdo';
+import { useFeedActivity } from '../hooks/useAdo';
 import { searchIdentities, buildPrWebUrl } from '../api/client';
 import { useSettingsStore } from '../store/settings';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -15,12 +15,19 @@ export function Feed() {
   const addUser = useFollowsStore((s) => s.addUser);
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const org = useSettingsStore((s) => s.organization);
-  const { data: activity, isLoading, refetch, isFetching } = useFollowedUserActivity();
+  const { data: allActivity, isLoading, refetch, isFetching } = useFeedActivity();
+  const [showSelf, setShowSelf] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; displayName: string; uniqueName: string; imageUrl: string }[]>([]);
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+
+  const activity = useMemo(() => {
+    if (!allActivity) return undefined;
+    if (showSelf) return allActivity;
+    return allActivity.filter((item) => !item.isSelf);
+  }, [allActivity, showSelf]);
 
   const handleSearch = async () => {
     if (searchQuery.trim().length < 2) return;
@@ -55,6 +62,18 @@ export function Feed() {
           Activity Feed
         </h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSelf(!showSelf)}
+            className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+              showSelf
+                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+            }`}
+            title={showSelf ? 'Hide my activity' : 'Show my activity'}
+          >
+            {showSelf ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            My activity
+          </button>
           <button
             onClick={() => setShowSearch(!showSearch)}
             className="flex items-center gap-1.5 text-sm bg-ado-blue text-white px-3 py-1.5 rounded-lg hover:bg-ado-blue-dark transition-colors"
@@ -158,7 +177,7 @@ export function Feed() {
         </div>
       )}
 
-      {isLoading && follows.length > 0 && (
+      {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 animate-pulse">
@@ -177,9 +196,9 @@ export function Feed() {
         </div>
       )}
 
-      {activity && activity.length === 0 && follows.length > 0 && (
+      {activity && activity.length === 0 && (
         <div className="text-center py-12 text-zinc-500 dark:text-zinc-400">
-          <p className="text-sm">No recent activity found from followed people.</p>
+          <p className="text-sm">No recent activity found.</p>
         </div>
       )}
     </div>
@@ -208,32 +227,53 @@ function ActivityCard({ item, org }: {
   item: {
     type: string;
     user: { displayName: string; imageUrl: string };
-    pullRequest: { pullRequestId: number; title: string; status: string; repository: { name: string; project: { name: string } }; sourceRefName: string; targetRefName: string };
+    pullRequest: {
+      pullRequestId: number;
+      title: string;
+      status: string;
+      isDraft: boolean;
+      createdBy: { displayName: string; imageUrl: string };
+      repository: { name: string; project: { name: string } };
+      sourceRefName: string;
+      targetRefName: string;
+    };
     timestamp: string;
+    isSelf?: boolean;
   };
   org: string;
 }) {
   const Icon = activityIcons[item.type] ?? Eye;
   const label = activityLabels[item.type] ?? item.type;
   const webUrl = buildPrWebUrl(org, item.pullRequest.repository.project.name, item.pullRequest.repository.name, item.pullRequest.pullRequestId);
+  const isReviewAction = item.type !== 'pr_created' && item.type !== 'pr_completed';
+  const prStatus = item.pullRequest.status;
+  const statusColor = prStatus === 'completed' ? 'text-green-600' : prStatus === 'abandoned' ? 'text-red-500' : 'text-ado-blue';
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
+    <div className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 ${item.isSelf ? 'border-l-2 border-l-ado-blue' : ''}`}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5">
           <img src={item.user.imageUrl} alt="" className="w-8 h-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm">
-            <span className="font-medium">{item.user.displayName}</span>{' '}
+            <span className="font-medium">{item.isSelf ? 'You' : item.user.displayName}</span>{' '}
             <span className="text-zinc-500 dark:text-zinc-400">{label}</span>{' '}
             <a href={webUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-ado-blue hover:underline">
               {item.pullRequest.title}
             </a>
           </p>
-          <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
+          <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400 flex-wrap">
             <Icon className="w-3 h-3" />
             <span>{item.pullRequest.repository.project.name}/{item.pullRequest.repository.name}</span>
+            {isReviewAction && (
+              <>
+                <span>·</span>
+                <span>by {item.pullRequest.createdBy.displayName}</span>
+              </>
+            )}
+            <span>·</span>
+            <span className={statusColor}>{prStatus}{item.pullRequest.isDraft ? ' (draft)' : ''}</span>
             <span>·</span>
             <span>{formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}</span>
           </div>
