@@ -148,18 +148,25 @@ export function useFeedActivity() {
         allUsers.map(async (user) => {
           await Promise.all(
             selectedProjects.map(async (project) => {
-              const [created, reviewing] = await Promise.all([
+              const queries: Promise<Awaited<ReturnType<typeof api.getProjectPullRequests>>>[] = [
                 api.getProjectPullRequests(project.name, {
-                  status: 'all',
+                  status: 'active',
                   creatorId: user.id,
-                  top: 50,
+                  top: 30,
+                }),
+                api.getProjectPullRequests(project.name, {
+                  status: 'completed',
+                  creatorId: user.id,
+                  top: 30,
                 }),
                 api.getProjectPullRequests(project.name, {
                   status: 'all',
                   reviewerId: user.id,
                   top: 50,
                 }),
-              ]);
+              ];
+              const [createdActive = [], createdCompleted = [], reviewing = []] = await Promise.all(queries);
+              const created = [...createdActive, ...createdCompleted];
 
               for (const pr of created) {
                 items.push({
