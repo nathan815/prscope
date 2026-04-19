@@ -90,6 +90,7 @@ export async function getPullRequests(
     creationDate: string;
     closedDate?: string;
     isDraft: boolean;
+    mergeStatus?: string;
     repository: { id: string; name: string; webUrl: string; project: { id: string; name: string } };
     sourceRefName: string;
     targetRefName: string;
@@ -130,6 +131,7 @@ export async function getProjectPullRequests(
     creationDate: string;
     closedDate?: string;
     isDraft: boolean;
+    mergeStatus?: string;
     repository: { id: string; name: string; webUrl: string; project: { id: string; name: string } };
     sourceRefName: string;
     targetRefName: string;

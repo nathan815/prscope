@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { ExternalLink, GitMerge, Clock, Eye } from 'lucide-react';
+import { ExternalLink, GitMerge, Clock, Eye, AlertTriangle } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { VoteBadge, sortReviewers } from './VoteBadge';
 import { useSettingsStore } from '../store/settings';
@@ -16,6 +16,7 @@ interface PRCardProps {
     createdBy: { id: string; displayName: string; imageUrl: string };
     creationDate: string;
     closedDate?: string;
+    mergeStatus?: string;
     repository: { name: string; project: { name: string } };
     sourceRefName: string;
     targetRefName: string;
@@ -70,6 +71,12 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <StatusBadge status={pr.status} isDraft={pr.isDraft} />
+              {pr.mergeStatus === 'conflicts' && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30">
+                  <AlertTriangle className="w-3 h-3" />
+                  Conflicts
+                </span>
+              )}
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {pr.repository.project.name} / {pr.repository.name}
               </span>
