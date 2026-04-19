@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { GitPullRequest, RefreshCw, PenLine, X, SlidersHorizontal, Calendar, Eye, UserCheck } from 'lucide-react';
+import { GitPullRequest, RefreshCw, PenLine, X, SlidersHorizontal, Calendar, Eye, UserCheck, CheckCircle2 } from 'lucide-react';
 import { subDays, subMonths, subYears, startOfDay } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { PRCard } from '../components/PRCard';
@@ -10,7 +10,7 @@ import { useReviewingStore, prKey } from '../store/reviewing';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 type StatusFilter = 'active' | 'completed' | 'abandoned' | 'all';
-type ViewTab = 'created' | 'assigned' | 'reviewing';
+type ViewTab = 'created' | 'assigned' | 'reviewing' | 'reviewed';
 type TimeFilter = '7d' | '30d' | '90d' | '6m' | '1y' | 'all';
 
 const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
@@ -121,6 +121,7 @@ export function MyPRs() {
 
   const allAssigned = data?.assigned;
   const allCreated = data?.created;
+  const userId = useSettingsStore((s) => s.userId);
 
   const allFetchedPrs = useMemo(() => {
     const prs = [...(allCreated ?? []), ...(allAssigned ?? [])];
@@ -138,7 +139,18 @@ export function MyPRs() {
     );
   }, [allFetchedPrs, reviewingPrIds]);
 
-  const allPrs = tab === 'created' ? allCreated : tab === 'assigned' ? allAssigned : reviewingPrs;
+  const reviewedPrs = useMemo(() => {
+    if (!allAssigned) return [];
+    return allAssigned.filter((pr) => {
+      const myReview = pr.reviewers.find((r) => r.id === userId);
+      return myReview && myReview.vote !== 0;
+    });
+  }, [allAssigned, userId]);
+
+  const allPrs = tab === 'created' ? allCreated
+    : tab === 'assigned' ? allAssigned
+    : tab === 'reviewed' ? reviewedPrs
+    : reviewingPrs;
 
   const repoCounts = useMemo(() => {
     if (!allPrs) return [];
@@ -222,6 +234,22 @@ export function MyPRs() {
           {reviewingPrs.length > 0 && (
             <span className="ml-1 text-xs bg-zinc-200 dark:bg-zinc-600 px-1.5 py-0.5 rounded-full">
               {reviewingPrs.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setFilter({ tab: 'reviewed', repo: null })}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            tab === 'reviewed'
+              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Reviewed
+          {reviewedPrs.length > 0 && (
+            <span className="ml-1 text-xs bg-zinc-200 dark:bg-zinc-600 px-1.5 py-0.5 rounded-full">
+              {reviewedPrs.length}
             </span>
           )}
         </button>
