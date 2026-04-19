@@ -1,6 +1,7 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { GitPullRequest, RefreshCw, PenLine, X, SlidersHorizontal, Calendar, Eye, UserCheck } from 'lucide-react';
 import { subDays, subMonths, subYears, startOfDay } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { PRCard } from '../components/PRCard';
 import { useMyPullRequests } from '../hooks/useAdo';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
@@ -83,10 +84,24 @@ function LimitPopover() {
 
 export function MyPRs() {
   usePageTitle('My PRs');
-  const [status, setStatus] = useState<StatusFilter>('active');
-  const [tab, setTab] = useState<ViewTab>('created');
-  const [repoFilter, setRepoFilter] = useState<string | null>(null);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('30d');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tab = (searchParams.get('tab') as ViewTab) || 'created';
+  const status = (searchParams.get('status') as StatusFilter) || 'active';
+  const timeFilter = (searchParams.get('time') as TimeFilter) || '30d';
+  const repoFilter = searchParams.get('repo') || null;
+
+  const setFilter = useCallback((updates: Record<string, string | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(updates)) {
+        if (v === null || v === undefined) next.delete(k);
+        else next.set(k, v);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const minTime = useMemo(() => getTimeCutoff(timeFilter), [timeFilter]);
   const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status, minTime);
@@ -163,7 +178,7 @@ export function MyPRs() {
 
       <div className="flex items-center gap-1 mb-4 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-fit">
         <button
-          onClick={() => { setTab('created'); setRepoFilter(null); }}
+          onClick={() => setFilter({ tab: 'created', repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             tab === 'created'
               ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
@@ -179,7 +194,7 @@ export function MyPRs() {
           )}
         </button>
         <button
-          onClick={() => { setTab('assigned'); setRepoFilter(null); }}
+          onClick={() => setFilter({ tab: 'assigned', repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             tab === 'assigned'
               ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
@@ -195,7 +210,7 @@ export function MyPRs() {
           )}
         </button>
         <button
-          onClick={() => { setTab('reviewing'); setRepoFilter(null); }}
+          onClick={() => setFilter({ tab: 'reviewing', repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             tab === 'reviewing'
               ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
@@ -217,7 +232,7 @@ export function MyPRs() {
           {(['active', 'completed', 'abandoned', 'all'] as const).map((s) => (
             <button
               key={s}
-              onClick={() => { setStatus(s); setRepoFilter(null); }}
+              onClick={() => setFilter({ status: s, repo: null })}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
                 status === s
                   ? 'bg-ado-blue text-white'
@@ -234,7 +249,7 @@ export function MyPRs() {
             {TIME_OPTIONS.map((t) => (
               <button
                 key={t.value}
-                onClick={() => setTimeFilter(t.value)}
+                onClick={() => setFilter({ time: t.value })}
                 className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                   timeFilter === t.value
                     ? 'bg-zinc-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
@@ -255,7 +270,7 @@ export function MyPRs() {
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-zinc-500 dark:text-zinc-400">Filtered to:</span>
               <button
-                onClick={() => setRepoFilter(null)}
+                onClick={() => setFilter({ repo: null })}
                 className="inline-flex items-center gap-1 text-xs font-medium bg-ado-blue/10 text-ado-blue pl-2 pr-1.5 py-0.5 rounded-full hover:bg-ado-blue/20 transition-colors"
               >
                 {repoFilter}
@@ -267,7 +282,7 @@ export function MyPRs() {
             {repoCounts.map(([repo, count]) => (
               <button
                 key={repo}
-                onClick={() => setRepoFilter(repoFilter === repo ? null : repo)}
+                onClick={() => setFilter({ repo: repoFilter === repo ? null : repo })}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${
                   repoFilter === repo
                     ? 'bg-ado-blue text-white'
