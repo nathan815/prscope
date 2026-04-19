@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { GitPullRequest, RefreshCw, Eye, PenLine } from 'lucide-react';
 import { PRCard } from '../components/PRCard';
 import { useMyPullRequests } from '../hooks/useAdo';
-import { useFavoritesStore } from '../store/favorites';
+import { useSelectedProjectsStore } from '../store/selectedProjects';
 
 type StatusFilter = 'active' | 'completed' | 'abandoned' | 'all';
 type ViewTab = 'created' | 'reviewing';
@@ -10,16 +10,16 @@ type ViewTab = 'created' | 'reviewing';
 export function MyPRs() {
   const [status, setStatus] = useState<StatusFilter>('active');
   const [tab, setTab] = useState<ViewTab>('created');
-  const favorites = useFavoritesStore((s) => s.repos);
+  const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status);
 
-  if (favorites.length === 0) {
+  if (selectedProjects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <GitPullRequest className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
-        <h2 className="text-lg font-semibold mb-2">No repos favorited yet</h2>
+        <h2 className="text-lg font-semibold mb-2">No projects selected</h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
-          Head to the <strong>Repos</strong> tab and star some repositories to start seeing your PRs here.
+          Head to the <strong>Repos</strong> tab and select your projects to start seeing PRs here.
         </p>
       </div>
     );

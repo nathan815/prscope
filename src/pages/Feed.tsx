@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useFollowsStore } from '../store/follows';
-import { useFavoritesStore } from '../store/favorites';
+import { useSelectedProjectsStore } from '../store/selectedProjects';
 import { useFollowedUserActivity } from '../hooks/useAdo';
 import { searchIdentities, buildPrWebUrl } from '../api/client';
 import { useSettingsStore } from '../store/settings';
@@ -11,7 +11,7 @@ export function Feed() {
   const follows = useFollowsStore((s) => s.users);
   const removeUser = useFollowsStore((s) => s.removeUser);
   const addUser = useFollowsStore((s) => s.addUser);
-  const favorites = useFavoritesStore((s) => s.repos);
+  const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const org = useSettingsStore((s) => s.organization);
   const { data: activity, isLoading, refetch, isFetching } = useFollowedUserActivity();
 
@@ -33,13 +33,13 @@ export function Feed() {
     }
   };
 
-  if (favorites.length === 0) {
+  if (selectedProjects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <Rss className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
-        <h2 className="text-lg font-semibold mb-2">Favorite some repos first</h2>
+        <h2 className="text-lg font-semibold mb-2">Select projects first</h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
-          The feed shows activity from followed people across your favorited repos. Star some repos first.
+          The feed shows activity from followed people across your selected projects. Select projects in the Repos tab first.
         </p>
       </div>
     );

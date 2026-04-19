@@ -102,6 +102,44 @@ export async function getPullRequests(
   return res.value;
 }
 
+export async function getProjectPullRequests(
+  projectName: string,
+  options: {
+    status?: string;
+    creatorId?: string;
+    reviewerId?: string;
+    top?: number;
+    skip?: number;
+  } = {}
+) {
+  const params = new URLSearchParams({ 'api-version': '7.1' });
+  if (options.status) params.set('searchCriteria.status', options.status);
+  if (options.creatorId) params.set('searchCriteria.creatorId', options.creatorId);
+  if (options.reviewerId) params.set('searchCriteria.reviewerId', options.reviewerId);
+  params.set('$top', String(options.top ?? 100));
+  if (options.skip) params.set('$skip', String(options.skip));
+
+  const res = await adoFetch<PagedResponse<{
+    pullRequestId: number;
+    title: string;
+    description?: string;
+    status: string;
+    createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string };
+    creationDate: string;
+    closedDate?: string;
+    isDraft: boolean;
+    repository: { id: string; name: string; webUrl: string; project: { id: string; name: string } };
+    sourceRefName: string;
+    targetRefName: string;
+    reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string; vote: number; isRequired?: boolean; hasDeclined?: boolean }[];
+    labels?: { id: string; name: string; active: boolean }[];
+  }>>(
+    `/${encodeURIComponent(projectName)}/_apis/git/pullrequests?${params}`
+  );
+
+  return res.value;
+}
+
 export async function getPullRequestThreads(
   projectName: string,
   repositoryId: string,

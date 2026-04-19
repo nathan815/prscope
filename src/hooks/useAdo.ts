@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSettingsStore } from '../store/settings';
-import { useFavoritesStore } from '../store/favorites';
 import { useFollowsStore } from '../store/follows';
 import * as api from '../api/client';
 import { configureClient } from '../api/client';
 import { useAuth } from '../auth/useAuth';
+import { useSelectedProjectsStore } from '../store/selectedProjects';
 import type { FavoriteRepo } from '../types';
 
 function useConfiguredClient() {
@@ -75,18 +75,18 @@ export function usePullRequests(
 
 export function useMyPullRequests(status: string = 'active') {
   const { isConfigured, userId } = useConfiguredClient();
-  const favorites = useFavoritesStore((s) => s.repos);
+  const selectedProjects = useSelectedProjectsStore((s) => s.projects);
 
   const queries = useQuery({
-    queryKey: ['myPullRequests', status, userId, favorites.map((f) => f.repoId)],
+    queryKey: ['myPullRequests', status, userId, selectedProjects.map((p) => p.name)],
     queryFn: async () => {
-      if (!userId || favorites.length === 0) return { created: [], reviewing: [] };
+      if (!userId || selectedProjects.length === 0) return { created: [], reviewing: [] };
 
       const results = await Promise.all(
-        favorites.map(async (repo) => {
+        selectedProjects.map(async (project) => {
           const [created, reviewing] = await Promise.all([
-            api.getPullRequests(repo.projectName, repo.repoId, { status, creatorId: userId }),
-            api.getPullRequests(repo.projectName, repo.repoId, { status, reviewerId: userId }),
+            api.getProjectPullRequests(project.name, { status, creatorId: userId }),
+            api.getProjectPullRequests(project.name, { status, reviewerId: userId }),
           ]);
           return { created, reviewing };
         })
@@ -102,7 +102,7 @@ export function useMyPullRequests(status: string = 'active') {
         reviewing: reviewingOnly.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()),
       };
     },
-    enabled: isConfigured && (userId?.length ?? 0) > 0 && favorites.length > 0,
+    enabled: isConfigured && (userId?.length ?? 0) > 0 && selectedProjects.length > 0,
     staleTime: 1000 * 60 * 2,
   });
 
@@ -112,35 +112,35 @@ export function useMyPullRequests(status: string = 'active') {
 export function useFollowedUserActivity() {
   const { isConfigured } = useConfiguredClient();
   const follows = useFollowsStore((s) => s.users);
-  const favorites = useFavoritesStore((s) => s.repos);
+  const selectedProjects = useSelectedProjectsStore((s) => s.projects);
 
   return useQuery({
-    queryKey: ['followedActivity', follows.map((f) => f.id), favorites.map((f) => f.repoId)],
+    queryKey: ['followedActivity', follows.map((f) => f.id), selectedProjects.map((p) => p.name)],
     queryFn: async () => {
-      if (follows.length === 0 || favorites.length === 0) return [];
+      if (follows.length === 0 || selectedProjects.length === 0) return [];
 
       const items: {
         id: string;
         type: 'pr_created' | 'pr_completed' | 'pr_reviewed';
         user: { id: string; displayName: string; uniqueName: string; imageUrl: string };
-        pullRequest: Awaited<ReturnType<typeof api.getPullRequests>>[0];
+        pullRequest: Awaited<ReturnType<typeof api.getProjectPullRequests>>[0];
         timestamp: string;
       }[] = [];
 
       await Promise.all(
         follows.map(async (user) => {
           await Promise.all(
-            favorites.map(async (repo) => {
+            selectedProjects.map(async (project) => {
               const [created, reviewing] = await Promise.all([
-                api.getPullRequests(repo.projectName, repo.repoId, {
+                api.getProjectPullRequests(project.name, {
                   status: 'all',
                   creatorId: user.id,
-                  top: 10,
+                  top: 20,
                 }),
-                api.getPullRequests(repo.projectName, repo.repoId, {
+                api.getProjectPullRequests(project.name, {
                   status: 'all',
                   reviewerId: user.id,
-                  top: 10,
+                  top: 20,
                 }),
               ]);
 
@@ -173,7 +173,7 @@ export function useFollowedUserActivity() {
       items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return items;
     },
-    enabled: isConfigured && follows.length > 0 && favorites.length > 0,
+    enabled: isConfigured && follows.length > 0 && selectedProjects.length > 0,
     staleTime: 1000 * 60 * 3,
   });
 }
