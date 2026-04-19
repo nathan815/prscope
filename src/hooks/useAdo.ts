@@ -214,7 +214,19 @@ export function useFeedActivity() {
         })
       );
 
-      items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const typePriority: Record<string, number> = {
+        pr_completed: 0,
+        pr_approved: 1,
+        pr_approved_suggestions: 1,
+        pr_rejected: 1,
+        pr_waiting: 1,
+        pr_created: 2,
+      };
+      items.sort((a, b) => {
+        const timeDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return (typePriority[a.type] ?? 1) - (typePriority[b.type] ?? 1);
+      });
       return items;
     },
     enabled: isConfigured && selectedProjects.length > 0,
