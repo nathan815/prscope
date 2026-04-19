@@ -1,13 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { GitPullRequest, RefreshCw, Eye, PenLine, X, SlidersHorizontal, Calendar } from 'lucide-react';
-import { subDays, subMonths, subYears, isAfter } from 'date-fns';
+import { GitPullRequest, RefreshCw, PenLine, X, SlidersHorizontal, Calendar, BookOpen, UserCheck } from 'lucide-react';
+import { subDays, subMonths, subYears } from 'date-fns';
 import { PRCard } from '../components/PRCard';
 import { useMyPullRequests } from '../hooks/useAdo';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
 import { useSettingsStore } from '../store/settings';
+import { useReviewingStore, prKey } from '../store/reviewing';
 
 type StatusFilter = 'active' | 'completed' | 'abandoned' | 'all';
-type ViewTab = 'created' | 'reviewing';
+type ViewTab = 'created' | 'assigned' | 'reviewing';
 type TimeFilter = '7d' | '30d' | '90d' | '6m' | '1y' | 'all';
 
 const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
@@ -19,15 +20,15 @@ const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
   { value: 'all', label: 'All time' },
 ];
 
-function getTimeCutoff(filter: TimeFilter): Date | null {
+function getTimeCutoff(filter: TimeFilter): string | undefined {
   const now = new Date();
   switch (filter) {
-    case '7d': return subDays(now, 7);
-    case '30d': return subDays(now, 30);
-    case '90d': return subDays(now, 90);
-    case '6m': return subMonths(now, 6);
-    case '1y': return subYears(now, 1);
-    case 'all': return null;
+    case '7d': return subDays(now, 7).toISOString();
+    case '30d': return subDays(now, 30).toISOString();
+    case '90d': return subDays(now, 90).toISOString();
+    case '6m': return subMonths(now, 6).toISOString();
+    case '1y': return subYears(now, 1).toISOString();
+    case 'all': return undefined;
   }
 }
 
@@ -85,7 +86,9 @@ export function MyPRs() {
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
-  const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status);
+  const minTime = getTimeCutoff(timeFilter);
+  const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status, minTime);
+  const reviewingPrIds = useReviewingStore((s) => s.prIds);
 
   if (selectedProjects.length === 0) {
     return (
@@ -99,14 +102,17 @@ export function MyPRs() {
     );
   }
 
-  const allPrsRaw = tab === 'created' ? data?.created : data?.reviewing;
+  const allAssigned = data?.assigned;
+  const allCreated = data?.created;
 
-  const allPrs = useMemo(() => {
-    if (!allPrsRaw) return undefined;
-    const cutoff = getTimeCutoff(timeFilter);
-    if (!cutoff) return allPrsRaw;
-    return allPrsRaw.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
-  }, [allPrsRaw, timeFilter]);
+  const reviewingPrs = useMemo(() => {
+    if (!allAssigned) return [];
+    return allAssigned.filter((pr) =>
+      reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId))
+    );
+  }, [allAssigned, reviewingPrIds]);
+
+  const allPrs = tab === 'created' ? allCreated : tab === 'assigned' ? allAssigned : reviewingPrs;
 
   const repoCounts = useMemo(() => {
     if (!allPrs) return [];
@@ -162,6 +168,22 @@ export function MyPRs() {
           )}
         </button>
         <button
+          onClick={() => { setTab('assigned'); setRepoFilter(null); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            tab === 'assigned'
+              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <UserCheck className="w-3.5 h-3.5" />
+          Assigned
+          {data?.assigned && (
+            <span className="ml-1 text-xs bg-zinc-200 dark:bg-zinc-600 px-1.5 py-0.5 rounded-full">
+              {data.assigned.length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => { setTab('reviewing'); setRepoFilter(null); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             tab === 'reviewing'
@@ -169,11 +191,11 @@ export function MyPRs() {
               : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
           }`}
         >
-          <Eye className="w-3.5 h-3.5" />
+          <BookOpen className="w-3.5 h-3.5" />
           Reviewing
-          {data?.reviewing && (
+          {reviewingPrs.length > 0 && (
             <span className="ml-1 text-xs bg-zinc-200 dark:bg-zinc-600 px-1.5 py-0.5 rounded-full">
-              {data.reviewing.length}
+              {reviewingPrs.length}
             </span>
           )}
         </button>

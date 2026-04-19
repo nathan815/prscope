@@ -110,12 +110,14 @@ export async function getProjectPullRequests(
     reviewerId?: string;
     top?: number;
     skip?: number;
+    minTime?: string;
   } = {}
 ) {
   const params = new URLSearchParams({ 'api-version': '7.1' });
   if (options.status) params.set('searchCriteria.status', options.status);
   if (options.creatorId) params.set('searchCriteria.creatorId', options.creatorId);
   if (options.reviewerId) params.set('searchCriteria.reviewerId', options.reviewerId);
+  if (options.minTime) params.set('searchCriteria.minTime', options.minTime);
   params.set('$top', String(options.top ?? 100));
   if (options.skip) params.set('$skip', String(options.skip));
 

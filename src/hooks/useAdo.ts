@@ -73,34 +73,34 @@ export function usePullRequests(
   });
 }
 
-export function useMyPullRequests(status: string = 'active') {
+export function useMyPullRequests(status: string = 'active', minTime?: string) {
   const { isConfigured, userId } = useConfiguredClient();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const maxPRs = useSettingsStore((s) => s.maxPRs);
 
   const queries = useQuery({
-    queryKey: ['myPullRequests', status, userId, selectedProjects.map((p) => p.name), maxPRs],
+    queryKey: ['myPullRequests', status, userId, selectedProjects.map((p) => p.name), maxPRs, minTime],
     queryFn: async () => {
       if (!userId || selectedProjects.length === 0) return { created: [], reviewing: [] };
 
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewing] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status, creatorId: userId, top: maxPRs }),
-            api.getProjectPullRequests(project.name, { status, reviewerId: userId, top: maxPRs }),
+            api.getProjectPullRequests(project.name, { status, creatorId: userId, top: maxPRs, minTime }),
+            api.getProjectPullRequests(project.name, { status, reviewerId: userId, top: maxPRs, minTime }),
           ]);
-          return { created, reviewing };
+          return { created, assigned: reviewing };
         })
       );
 
       const created = results.flatMap((r) => r.created);
-      const reviewing = results.flatMap((r) => r.reviewing);
+      const assigned = results.flatMap((r) => r.assigned);
       const createdIds = new Set(created.map((pr) => pr.pullRequestId));
-      const reviewingOnly = reviewing.filter((pr) => !createdIds.has(pr.pullRequestId));
+      const assignedOnly = assigned.filter((pr) => !createdIds.has(pr.pullRequestId));
 
       return {
         created: created.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()),
-        reviewing: reviewingOnly.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()),
+        assigned: assignedOnly.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()),
       };
     },
     enabled: isConfigured && (userId?.length ?? 0) > 0 && selectedProjects.length > 0,
