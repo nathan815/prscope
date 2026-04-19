@@ -1,0 +1,57 @@
+import { NavLink } from 'react-router-dom';
+import { GitPullRequest, Star, Rss, Settings, Telescope } from 'lucide-react';
+import { useSettingsStore } from '../store/settings';
+import { useFavoritesStore } from '../store/favorites';
+
+const navItems = [
+  { to: '/', icon: GitPullRequest, label: 'My PRs' },
+  { to: '/repos', icon: Star, label: 'Repos' },
+  { to: '/feed', icon: Rss, label: 'Feed' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
+];
+
+export function Sidebar() {
+  const displayName = useSettingsStore((s) => s.userDisplayName);
+  const favoriteCount = useFavoritesStore((s) => s.repos.length);
+
+  return (
+    <aside className="w-56 flex-shrink-0 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
+      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <Telescope className="w-6 h-6 text-ado-blue" />
+          <span className="font-bold text-lg tracking-tight">PRScope</span>
+        </div>
+      </div>
+
+      <nav className="flex-1 p-2 space-y-1">
+        {navItems.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-ado-blue/10 text-ado-blue dark:bg-ado-blue/20'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+              }`
+            }
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+            {label === 'Repos' && favoriteCount > 0 && (
+              <span className="ml-auto text-xs bg-zinc-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded-full">
+                {favoriteCount}
+              </span>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {displayName && (
+        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{displayName}</p>
+        </div>
+      )}
+    </aside>
+  );
+}

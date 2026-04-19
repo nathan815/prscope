@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ado-blue: #0078d4;
+  --color-ado-blue-dark: #005a9e;
+  --color-ado-blue-light: #deecf9;
+
+  --color-status-active: #0078d4;
+  --color-status-completed: #107c10;
+  --color-status-abandoned: #a80000;
+  --color-status-draft: #8a8886;
+
+  --color-vote-approved: #107c10;
+  --color-vote-approved-suggestions: #5db300;
+  --color-vote-waiting: #ca5010;
+  --color-vote-rejected: #a80000;
+  --color-vote-none: #8a8886;
+  --color-vote-no-response: #c8c6c4;
+
+  --color-surface: #ffffff;
+  --color-surface-raised: #fafafa;
+  --color-surface-overlay: #f3f2f1;
+  --color-border-subtle: #e1dfdd;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+html {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-surface: #1b1a19;
+    --color-surface-raised: #252423;
+    --color-surface-overlay: #323130;
+    --color-border-subtle: #3b3a39;
+  }
+}
+
+.dark {
+  --color-surface: #1b1a19;
+  --color-surface-raised: #252423;
+  --color-surface-overlay: #323130;
+  --color-border-subtle: #3b3a39;
+}
