@@ -105,12 +105,21 @@ export function MyPRs() {
   const allAssigned = data?.assigned;
   const allCreated = data?.created;
 
+  const allFetchedPrs = useMemo(() => {
+    const prs = [...(allCreated ?? []), ...(allAssigned ?? [])];
+    const seen = new Set<number>();
+    return prs.filter((pr) => {
+      if (seen.has(pr.pullRequestId)) return false;
+      seen.add(pr.pullRequestId);
+      return true;
+    });
+  }, [allCreated, allAssigned]);
+
   const reviewingPrs = useMemo(() => {
-    if (!allAssigned) return [];
-    return allAssigned.filter((pr) =>
+    return allFetchedPrs.filter((pr) =>
       reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId))
     );
-  }, [allAssigned, reviewingPrIds]);
+  }, [allFetchedPrs, reviewingPrIds]);
 
   const allPrs = tab === 'created' ? allCreated : tab === 'assigned' ? allAssigned : reviewingPrs;
 
