@@ -6,8 +6,10 @@ import { useSelectedProjectsStore } from '../store/selectedProjects';
 import { useFollowedUserActivity } from '../hooks/useAdo';
 import { searchIdentities, buildPrWebUrl } from '../api/client';
 import { useSettingsStore } from '../store/settings';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export function Feed() {
+  usePageTitle('Feed');
   const follows = useFollowsStore((s) => s.users);
   const removeUser = useFollowsStore((s) => s.removeUser);
   const addUser = useFollowsStore((s) => s.addUser);

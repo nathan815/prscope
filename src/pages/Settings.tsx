@@ -4,8 +4,10 @@ import { useSettingsStore } from '../store/settings';
 import { configureClient, getConnectionData } from '../api/client';
 import { useAuth } from '../auth/useAuth';
 import { msalAvailable } from '../auth/msalConfig';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export function Settings({ firstRun }: { firstRun?: boolean }) {
+  usePageTitle(firstRun ? 'Welcome' : 'Settings');
   const { organization, pat, theme, authMode, maxPRs, setOrganization, setPat, setUser, setTheme, setAuthMode, setAzCliAuthenticated, setMaxPRs } = useSettingsStore();
   const auth = useAuth();
 

@@ -4,10 +4,12 @@ import { Star, Search, Loader2, FolderOpen, X, Check } from 'lucide-react';
 import { useProjects, useMultiProjectRepositories } from '../hooks/useAdo';
 import { useFavoritesStore } from '../store/favorites';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const ROW_HEIGHT = 40;
 
 export function Repos() {
+  usePageTitle('Repos');
   const [search, setSearch] = useState('');
   const [projectSearch, setProjectSearch] = useState('');
   const [showProjectPicker, setShowProjectPicker] = useState(false);

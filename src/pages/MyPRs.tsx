@@ -6,6 +6,7 @@ import { useMyPullRequests } from '../hooks/useAdo';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
 import { useSettingsStore } from '../store/settings';
 import { useReviewingStore, prKey } from '../store/reviewing';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 type StatusFilter = 'active' | 'completed' | 'abandoned' | 'all';
 type ViewTab = 'created' | 'assigned' | 'reviewing';
@@ -81,6 +82,7 @@ function LimitPopover() {
 }
 
 export function MyPRs() {
+  usePageTitle('My PRs');
   const [status, setStatus] = useState<StatusFilter>('active');
   const [tab, setTab] = useState<ViewTab>('created');
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
