@@ -76,17 +76,18 @@ export function usePullRequests(
 export function useMyPullRequests(status: string = 'active') {
   const { isConfigured, userId } = useConfiguredClient();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
+  const maxPRs = useSettingsStore((s) => s.maxPRs);
 
   const queries = useQuery({
-    queryKey: ['myPullRequests', status, userId, selectedProjects.map((p) => p.name)],
+    queryKey: ['myPullRequests', status, userId, selectedProjects.map((p) => p.name), maxPRs],
     queryFn: async () => {
       if (!userId || selectedProjects.length === 0) return { created: [], reviewing: [] };
 
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewing] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status, creatorId: userId }),
-            api.getProjectPullRequests(project.name, { status, reviewerId: userId }),
+            api.getProjectPullRequests(project.name, { status, creatorId: userId, top: maxPRs }),
+            api.getProjectPullRequests(project.name, { status, reviewerId: userId, top: maxPRs }),
           ]);
           return { created, reviewing };
         })

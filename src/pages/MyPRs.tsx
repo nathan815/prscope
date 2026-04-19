@@ -1,15 +1,89 @@
-import { useState } from 'react';
-import { GitPullRequest, RefreshCw, Eye, PenLine } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { GitPullRequest, RefreshCw, Eye, PenLine, X, SlidersHorizontal, Calendar } from 'lucide-react';
+import { subDays, subMonths, subYears, isAfter } from 'date-fns';
 import { PRCard } from '../components/PRCard';
 import { useMyPullRequests } from '../hooks/useAdo';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
+import { useSettingsStore } from '../store/settings';
 
 type StatusFilter = 'active' | 'completed' | 'abandoned' | 'all';
 type ViewTab = 'created' | 'reviewing';
+type TimeFilter = '7d' | '30d' | '90d' | '6m' | '1y' | 'all';
+
+const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: '90d', label: '90 days' },
+  { value: '6m', label: '6 months' },
+  { value: '1y', label: '1 year' },
+  { value: 'all', label: 'All time' },
+];
+
+function getTimeCutoff(filter: TimeFilter): Date | null {
+  const now = new Date();
+  switch (filter) {
+    case '7d': return subDays(now, 7);
+    case '30d': return subDays(now, 30);
+    case '90d': return subDays(now, 90);
+    case '6m': return subMonths(now, 6);
+    case '1y': return subYears(now, 1);
+    case 'all': return null;
+  }
+}
+
+const LIMIT_OPTIONS = [500, 1000, 2000, 5000];
+
+function LimitPopover() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const maxPRs = useSettingsStore((s) => s.maxPRs);
+  const setMaxPRs = useSettingsStore((s) => s.setMaxPRs);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-ado-blue transition-colors"
+      >
+        <SlidersHorizontal className="w-3 h-3" />
+        Last {maxPRs.toLocaleString()} PRs
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 z-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg p-2 min-w-[140px]">
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold px-2 mb-1">Fetch limit</p>
+          {LIMIT_OPTIONS.map((n) => (
+            <button
+              key={n}
+              onClick={() => { setMaxPRs(n); setOpen(false); }}
+              className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+                maxPRs === n
+                  ? 'bg-ado-blue/10 text-ado-blue font-medium'
+                  : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+              }`}
+            >
+              {n.toLocaleString()}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MyPRs() {
   const [status, setStatus] = useState<StatusFilter>('active');
   const [tab, setTab] = useState<ViewTab>('created');
+  const [repoFilter, setRepoFilter] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status);
 
@@ -25,7 +99,30 @@ export function MyPRs() {
     );
   }
 
-  const prs = tab === 'created' ? data?.created : data?.reviewing;
+  const allPrsRaw = tab === 'created' ? data?.created : data?.reviewing;
+
+  const allPrs = useMemo(() => {
+    if (!allPrsRaw) return undefined;
+    const cutoff = getTimeCutoff(timeFilter);
+    if (!cutoff) return allPrsRaw;
+    return allPrsRaw.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
+  }, [allPrsRaw, timeFilter]);
+
+  const repoCounts = useMemo(() => {
+    if (!allPrs) return [];
+    const counts = new Map<string, number>();
+    for (const pr of allPrs) {
+      const name = pr.repository.name;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1]);
+  }, [allPrs]);
+
+  const prs = useMemo(
+    () => repoFilter ? allPrs?.filter((pr) => pr.repository.name === repoFilter) : allPrs,
+    [allPrs, repoFilter]
+  );
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -34,19 +131,22 @@ export function MyPRs() {
           <GitPullRequest className="w-6 h-6" />
           My Pull Requests
         </h1>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-ado-blue transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-4">
+          <LimitPopover />
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-ado-blue transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-1 mb-4 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-fit">
         <button
-          onClick={() => setTab('created')}
+          onClick={() => { setTab('created'); setRepoFilter(null); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             tab === 'created'
               ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
@@ -62,7 +162,7 @@ export function MyPRs() {
           )}
         </button>
         <button
-          onClick={() => setTab('reviewing')}
+          onClick={() => { setTab('reviewing'); setRepoFilter(null); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             tab === 'reviewing'
               ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
@@ -79,21 +179,77 @@ export function MyPRs() {
         </button>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {(['active', 'completed', 'abandoned', 'all'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatus(s)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
-              status === s
-                ? 'bg-ado-blue text-white'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-            }`}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
+        <div className="flex gap-2">
+          {(['active', 'completed', 'abandoned', 'all'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => { setStatus(s); setRepoFilter(null); }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
+                status === s
+                  ? 'bg-ado-blue text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+          <div className="flex gap-1">
+            {TIME_OPTIONS.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setTimeFilter(t.value)}
+                className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                  timeFilter === t.value
+                    ? 'bg-zinc-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* Repo summary bar */}
+      {repoCounts.length > 0 && (
+        <div className="mb-6">
+          {repoFilter && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Filtered to:</span>
+              <button
+                onClick={() => setRepoFilter(null)}
+                className="inline-flex items-center gap-1 text-xs font-medium bg-ado-blue/10 text-ado-blue pl-2 pr-1.5 py-0.5 rounded-full hover:bg-ado-blue/20 transition-colors"
+              >
+                {repoFilter}
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {repoCounts.map(([repo, count]) => (
+              <button
+                key={repo}
+                onClick={() => setRepoFilter(repoFilter === repo ? null : repo)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${
+                  repoFilter === repo
+                    ? 'bg-ado-blue text-white'
+                    : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-ado-blue/50'
+                }`}
+              >
+                {repo}
+                <span className={`font-semibold ${repoFilter === repo ? 'text-white/80' : 'text-zinc-400'}`}>
+                  {count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
@@ -114,7 +270,11 @@ export function MyPRs() {
 
       {prs && prs.length === 0 && !isLoading && (
         <div className="text-center py-12 text-zinc-500 dark:text-zinc-400">
-          <p className="text-sm">No {status === 'all' ? '' : status} pull requests found.</p>
+          <p className="text-sm">
+            No {status === 'all' ? '' : status} pull requests found
+            {repoFilter ? ` in ${repoFilter}` : ''}
+            {timeFilter !== 'all' ? ` in the last ${TIME_OPTIONS.find((t) => t.value === timeFilter)?.label}` : ''}.
+          </p>
         </div>
       )}
 

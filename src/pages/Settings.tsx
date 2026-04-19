@@ -6,7 +6,7 @@ import { useAuth } from '../auth/useAuth';
 import { msalAvailable } from '../auth/msalConfig';
 
 export function Settings({ firstRun }: { firstRun?: boolean }) {
-  const { organization, pat, theme, authMode, setOrganization, setPat, setUser, setTheme, setAuthMode, setAzCliAuthenticated } = useSettingsStore();
+  const { organization, pat, theme, authMode, maxPRs, setOrganization, setPat, setUser, setTheme, setAuthMode, setAzCliAuthenticated, setMaxPRs } = useSettingsStore();
   const auth = useAuth();
 
   const [orgInput, setOrgInput] = useState(organization);
@@ -293,6 +293,28 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
           </div>
         )}
       </div>
+
+      {!firstRun && (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mt-4">
+          <h2 className="text-sm font-semibold mb-3">PR Fetch Limit</h2>
+          <p className="text-xs text-zinc-400 mb-2">Max PRs to fetch per query. Increase if you have a long history.</p>
+          <div className="flex gap-2">
+            {[500, 1000, 2000, 5000].map((n) => (
+              <button
+                key={n}
+                onClick={() => setMaxPRs(n)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  maxPRs === n
+                    ? 'bg-ado-blue text-white'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                }`}
+              >
+                {n.toLocaleString()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!firstRun && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mt-4">
