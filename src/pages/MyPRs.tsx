@@ -84,7 +84,7 @@ export function MyPRs() {
   const [status, setStatus] = useState<StatusFilter>('active');
   const [tab, setTab] = useState<ViewTab>('created');
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('30d');
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const minTime = useMemo(() => getTimeCutoff(timeFilter), [timeFilter]);
   const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status, minTime);
@@ -210,7 +210,7 @@ export function MyPRs() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 mb-4 flex-wrap">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
         <div className="flex gap-2">
           {(['active', 'completed', 'abandoned', 'all'] as const).map((s) => (
             <button
