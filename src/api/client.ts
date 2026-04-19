@@ -15,7 +15,7 @@ export function configureClient(
   cachedTokenProvider = tokenProvider;
 }
 
-async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado'): Promise<T> {
+async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado', init?: { method?: string; body?: string }): Promise<T> {
   if (!cachedOrg || !cachedTokenProvider) {
     throw new Error('ADO client not configured');
   }
@@ -23,18 +23,22 @@ async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado'): Promise
   const token = await cachedTokenProvider();
 
   let url: string;
-  let headers: Record<string, string>;
+  const headers: Record<string, string> = {};
 
   if (cachedMode === 'oauth' || cachedMode === 'az-cli') {
     const baseUrl = base === 'ado' ? 'https://dev.azure.com' : 'https://vssps.dev.azure.com';
     url = `${baseUrl}/${cachedOrg}${path}`;
-    headers = { 'Authorization': `Bearer ${token}` };
+    headers['Authorization'] = `Bearer ${token}`;
   } else {
     url = `/api/${base}/${cachedOrg}${path}`;
-    headers = { 'x-ado-pat': token };
+    headers['x-ado-pat'] = token;
   }
 
-  const res = await fetch(url, { headers });
+  if (init?.body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(url, { headers, method: init?.method, body: init?.body });
 
   if (!res.ok) {
     const text = await res.text();
@@ -169,13 +173,51 @@ export async function getPullRequestThreads(
 }
 
 export async function searchIdentities(query: string) {
-  const res = await adoFetch<PagedResponse<{
-    id: string;
-    displayName: string;
-    uniqueName: string;
-    imageUrl: string;
-  }>>(`/_apis/identities?searchFilter=General&filterValue=${encodeURIComponent(query)}&queryMembership=None&api-version=7.1`, 'vssps');
-  return res.value;
+  const res = await adoFetch<{
+    results: {
+      identities: {
+        entityId: string;
+        originId: string;
+        localId: string | null;
+        displayName: string | null;
+        samAccountName: string | null;
+        mail: string | null;
+        signInAddress: string | null;
+        subjectDescriptor: string | null;
+      }[];
+    }[];
+  }>(
+    `/_apis/IdentityPicker/Identities?api-version=7.1-preview.1`,
+    'ado',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        query,
+        identityTypes: ['user'],
+        operationScopes: ['ims', 'source'],
+        properties: ['DisplayName', 'Mail', 'SignInAddress', 'SamAccountName', 'SubjectDescriptor'],
+        options: { MinResults: 5, MaxResults: 20 },
+      }),
+    }
+  );
+
+  return (res.results?.[0]?.identities ?? [])
+    .filter((i) => i.displayName)
+    .map((i) => ({
+      id: i.localId ?? i.originId,
+      displayName: i.displayName ?? '',
+      uniqueName: i.signInAddress ?? i.mail ?? i.samAccountName ?? '',
+      imageUrl: i.subjectDescriptor
+        ? buildAvatarUrl(i.subjectDescriptor)
+        : '',
+    }));
+}
+
+function buildAvatarUrl(subjectDescriptor: string): string {
+  if (cachedMode === 'oauth' || cachedMode === 'az-cli') {
+    return `https://dev.azure.com/${cachedOrg}/_apis/GraphProfile/MemberAvatars/${subjectDescriptor}`;
+  }
+  return `/api/ado/${cachedOrg}/_apis/GraphProfile/MemberAvatars/${subjectDescriptor}`;
 }
 
 export function buildPrWebUrl(org: string, projectName: string, repoName: string, prId: number) {

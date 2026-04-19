@@ -79,7 +79,7 @@ export function Feed() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder="Search by name or alias (e.g. johnsonn)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -99,12 +99,19 @@ export function Feed() {
             <div className="space-y-1">
               {searchResults.map((user) => {
                 const isFollowing = follows.some((f) => f.id === user.id);
+                const alias = user.uniqueName?.replace(/@.*$/, '') ?? '';
                 return (
                   <div key={user.id} className="flex items-center justify-between px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <img src={user.imageUrl} alt="" className="w-6 h-6 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      <span className="text-sm">{user.displayName}</span>
-                      <span className="text-xs text-zinc-400">{user.uniqueName}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {user.imageUrl ? (
+                        <img src={user.imageUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-medium text-zinc-600 dark:text-zinc-300 flex-shrink-0">
+                          {user.displayName.charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium truncate">{user.displayName}</span>
+                      {alias && <span className="text-xs text-zinc-400 truncate">{alias}</span>}
                     </div>
                     <button
                       onClick={() => {
