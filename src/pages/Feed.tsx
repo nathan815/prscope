@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye } from 'lucide-react';
+import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye, ThumbsDown, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useFollowsStore } from '../store/follows';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
@@ -186,31 +186,35 @@ export function Feed() {
   );
 }
 
-const activityIcons = {
+const activityIcons: Record<string, typeof GitPullRequest> = {
   pr_created: GitPullRequest,
   pr_completed: CheckCircle2,
-  pr_reviewed: Eye,
-  pr_commented: Rss,
+  pr_approved: CheckCircle2,
+  pr_approved_suggestions: CheckCircle2,
+  pr_rejected: ThumbsDown,
+  pr_waiting: Clock,
 };
 
-const activityLabels = {
+const activityLabels: Record<string, string> = {
   pr_created: 'created',
   pr_completed: 'completed',
-  pr_reviewed: 'is reviewing',
-  pr_commented: 'commented on',
+  pr_approved: 'approved',
+  pr_approved_suggestions: 'approved with suggestions',
+  pr_rejected: 'rejected',
+  pr_waiting: 'is waiting on author for',
 };
 
 function ActivityCard({ item, org }: {
   item: {
-    type: 'pr_created' | 'pr_completed' | 'pr_reviewed' | 'pr_commented';
+    type: string;
     user: { displayName: string; imageUrl: string };
     pullRequest: { pullRequestId: number; title: string; status: string; repository: { name: string; project: { name: string } }; sourceRefName: string; targetRefName: string };
     timestamp: string;
   };
   org: string;
 }) {
-  const Icon = activityIcons[item.type];
-  const label = activityLabels[item.type];
+  const Icon = activityIcons[item.type] ?? Eye;
+  const label = activityLabels[item.type] ?? item.type;
   const webUrl = buildPrWebUrl(org, item.pullRequest.repository.project.name, item.pullRequest.repository.name, item.pullRequest.pullRequestId);
 
   return (

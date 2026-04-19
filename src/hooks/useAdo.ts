@@ -122,7 +122,7 @@ export function useFollowedUserActivity() {
 
       const items: {
         id: string;
-        type: 'pr_created' | 'pr_completed' | 'pr_reviewed';
+        type: 'pr_created' | 'pr_completed' | 'pr_approved' | 'pr_approved_suggestions' | 'pr_rejected' | 'pr_waiting';
         user: { id: string; displayName: string; uniqueName: string; imageUrl: string };
         pullRequest: Awaited<ReturnType<typeof api.getProjectPullRequests>>[0];
         timestamp: string;
@@ -158,9 +158,15 @@ export function useFollowedUserActivity() {
 
               for (const pr of reviewing) {
                 if (pr.createdBy.id === user.id) continue;
+                const myReview = pr.reviewers.find((r) => r.id === user.id);
+                if (!myReview || myReview.vote === 0) continue;
+                const type = myReview.vote >= 10 ? 'pr_approved' as const
+                  : myReview.vote >= 5 ? 'pr_approved_suggestions' as const
+                  : myReview.vote <= -10 ? 'pr_rejected' as const
+                  : 'pr_waiting' as const;
                 items.push({
                   id: `${user.id}-review-${pr.pullRequestId}`,
-                  type: 'pr_reviewed',
+                  type,
                   user: { id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl },
                   pullRequest: pr,
                   timestamp: pr.creationDate,
