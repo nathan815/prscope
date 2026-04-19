@@ -12,6 +12,7 @@ const navItems = [
 
 export function Sidebar() {
   const displayName = useSettingsStore((s) => s.userDisplayName);
+  const organization = useSettingsStore((s) => s.organization);
   const favoriteCount = useFavoritesStore((s) => s.repos.length);
 
   return (
@@ -21,6 +22,9 @@ export function Sidebar() {
           <Telescope className="w-6 h-6 text-ado-blue" />
           <span className="font-bold text-lg tracking-tight">PRScope</span>
         </div>
+        {organization && (
+          <p className="text-[11px] text-zinc-400 mt-1 truncate">{organization}</p>
+        )}
       </div>
 
       <nav className="flex-1 p-2 space-y-1">
