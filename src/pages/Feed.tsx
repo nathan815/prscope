@@ -238,6 +238,7 @@ function ActivityCard({ item, org }: {
       targetRefName: string;
     };
     timestamp: string;
+    timestampLabel?: string;
     isSelf?: boolean;
   };
   org: string;
@@ -248,9 +249,10 @@ function ActivityCard({ item, org }: {
   const isReviewAction = item.type !== 'pr_created' && item.type !== 'pr_completed';
   const prStatus = item.pullRequest.status;
   const statusColor = prStatus === 'completed' ? 'text-green-600' : prStatus === 'abandoned' ? 'text-red-500' : 'text-ado-blue';
+  const timeLabel = item.timestampLabel === 'completed' ? 'completed' : item.timestampLabel === 'updated' ? 'updated' : 'PR created';
 
   return (
-    <div className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 ${item.isSelf ? 'border-l-2 border-l-ado-blue' : ''}`}>
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
       <div className="flex items-start gap-3">
         <div className="mt-0.5">
           <img src={item.user.imageUrl} alt="" className="w-8 h-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -275,7 +277,7 @@ function ActivityCard({ item, org }: {
             <span>·</span>
             <span className={statusColor}>{prStatus}{item.pullRequest.isDraft ? ' (draft)' : ''}</span>
             <span>·</span>
-            <span>{formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}</span>
+            <span>{timeLabel} {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}</span>
           </div>
         </div>
       </div>

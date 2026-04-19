@@ -127,6 +127,7 @@ export function useFeedActivity() {
         user: { id: string; displayName: string; uniqueName: string; imageUrl: string };
         pullRequest: Awaited<ReturnType<typeof api.getProjectPullRequests>>[0];
         timestamp: string;
+        timestampLabel: 'created' | 'completed' | 'updated';
         isSelf: boolean;
       };
 
@@ -156,12 +157,14 @@ export function useFeedActivity() {
 
               for (const pr of created) {
                 const type = pr.status === 'completed' ? 'pr_completed' as const : 'pr_created' as const;
+                const isCompleted = pr.status === 'completed' && pr.closedDate;
                 items.push({
                   id: `${user.id}-created-${pr.pullRequestId}`,
                   type,
                   user: pr.createdBy,
                   pullRequest: pr,
-                  timestamp: pr.status === 'completed' && pr.closedDate ? pr.closedDate : pr.creationDate,
+                  timestamp: isCompleted ? pr.closedDate! : pr.creationDate,
+                  timestampLabel: isCompleted ? 'completed' : 'created',
                   isSelf: user.isSelf,
                 });
               }
@@ -180,6 +183,7 @@ export function useFeedActivity() {
                   user: user.isSelf ? pr.reviewers.find((r) => r.id === user.id)! : { id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl },
                   pullRequest: pr,
                   timestamp: pr.creationDate,
+                  timestampLabel: 'created',
                   isSelf: user.isSelf,
                 });
               }
