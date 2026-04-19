@@ -91,8 +91,13 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {formatDistanceToNow(new Date(pr.creationDate), { addSuffix: true })}
+                created {formatDistanceToNow(new Date(pr.creationDate), { addSuffix: true })}
               </span>
+              {pr.closedDate && (
+                <span className="text-green-600">
+                  completed {formatDistanceToNow(new Date(pr.closedDate), { addSuffix: true })}
+                </span>
+              )}
             </div>
           </div>
           <ExternalLink className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />

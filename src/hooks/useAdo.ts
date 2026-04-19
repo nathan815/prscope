@@ -98,9 +98,15 @@ export function useMyPullRequests(status: string = 'active', minTime?: string) {
       const createdIds = new Set(created.map((pr) => pr.pullRequestId));
       const assignedOnly = assigned.filter((pr) => !createdIds.has(pr.pullRequestId));
 
+      const sortByLatest = (a: { closedDate?: string; creationDate: string }, b: { closedDate?: string; creationDate: string }) => {
+        const aTime = new Date(a.closedDate ?? a.creationDate).getTime();
+        const bTime = new Date(b.closedDate ?? b.creationDate).getTime();
+        return bTime - aTime;
+      };
+
       return {
-        created: created.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()),
-        assigned: assignedOnly.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()),
+        created: created.sort(sortByLatest),
+        assigned: assignedOnly.sort(sortByLatest),
       };
     },
     enabled: isConfigured && (userId?.length ?? 0) > 0 && selectedProjects.length > 0,
@@ -146,27 +152,36 @@ export function useFeedActivity() {
                 api.getProjectPullRequests(project.name, {
                   status: 'all',
                   creatorId: user.id,
-                  top: 20,
+                  top: 50,
                 }),
                 api.getProjectPullRequests(project.name, {
                   status: 'all',
                   reviewerId: user.id,
-                  top: 20,
+                  top: 50,
                 }),
               ]);
 
               for (const pr of created) {
-                const type = pr.status === 'completed' ? 'pr_completed' as const : 'pr_created' as const;
-                const isCompleted = pr.status === 'completed' && pr.closedDate;
                 items.push({
                   id: `${user.id}-created-${pr.pullRequestId}`,
-                  type,
+                  type: 'pr_created',
                   user: pr.createdBy,
                   pullRequest: pr,
-                  timestamp: isCompleted ? pr.closedDate! : pr.creationDate,
-                  timestampLabel: isCompleted ? 'completed' : 'created',
+                  timestamp: pr.creationDate,
+                  timestampLabel: 'created',
                   isSelf: user.isSelf,
                 });
+                if (pr.status === 'completed' && pr.closedDate) {
+                  items.push({
+                    id: `${user.id}-completed-${pr.pullRequestId}`,
+                    type: 'pr_completed',
+                    user: pr.createdBy,
+                    pullRequest: pr,
+                    timestamp: pr.closedDate,
+                    timestampLabel: 'completed',
+                    isSelf: user.isSelf,
+                  });
+                }
               }
 
               for (const pr of reviewing) {
@@ -182,8 +197,8 @@ export function useFeedActivity() {
                   type,
                   user: user.isSelf ? pr.reviewers.find((r) => r.id === user.id)! : { id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl },
                   pullRequest: pr,
-                  timestamp: pr.creationDate,
-                  timestampLabel: 'created',
+                  timestamp: pr.closedDate ?? pr.creationDate,
+                  timestampLabel: pr.closedDate ? 'completed' : 'created',
                   isSelf: user.isSelf,
                 });
               }
