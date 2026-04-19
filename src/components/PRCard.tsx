@@ -5,6 +5,7 @@ import { VoteBadge } from './VoteBadge';
 import { useSettingsStore } from '../store/settings';
 import { useReviewingStore, prKey } from '../store/reviewing';
 import { buildPrWebUrl } from '../api/client';
+import { toast } from './Toast';
 
 interface PRCardProps {
   pr: {
@@ -34,6 +35,25 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
   const key = prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId);
   const isReviewing = useReviewingStore((s) => s.isReviewing(key));
   const toggle = useReviewingStore((s) => s.toggle);
+  const add = useReviewingStore((s) => s.add);
+
+  const handleClick = () => {
+    if (!isReviewing) {
+      add(key);
+      toast(`Marked PR #${pr.pullRequestId} as Reviewing`);
+    }
+  };
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggle(key);
+    if (isReviewing) {
+      toast(`Unmarked PR #${pr.pullRequestId} from Reviewing`);
+    } else {
+      toast(`Marked PR #${pr.pullRequestId} as Reviewing`);
+    }
+  };
 
   return (
     <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 hover:border-ado-blue/50 hover:shadow-md transition-all group">
@@ -42,6 +62,7 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
         target="_blank"
         rel="noopener noreferrer"
         className="block"
+        onClick={handleClick}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -102,7 +123,7 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
 
       {showReviewToggle && (
         <button
-          onClick={(e) => { e.preventDefault(); toggle(key); }}
+          onClick={handleToggle}
           title={isReviewing ? 'Remove from Reviewing' : 'Mark as Reviewing'}
           className={`absolute top-3 right-10 p-1.5 rounded-lg transition-all ${
             isReviewing

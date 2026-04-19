@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Layout } from './components/Layout';
+import { ToastContainer } from './components/Toast';
 import { MyPRs } from './pages/MyPRs';
 import { Repos } from './pages/Repos';
 import { Feed } from './pages/Feed';
@@ -33,9 +34,12 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="*" element={<Settings firstRun />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path="*" element={<Settings firstRun />} />
+        </Routes>
+        <ToastContainer />
+      </>
     );
   }
 
@@ -48,6 +52,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <ToastContainer />
     </Layout>
   );
 }
