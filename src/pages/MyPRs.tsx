@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { GitPullRequest, RefreshCw, PenLine, X, SlidersHorizontal, Calendar, BookOpen, UserCheck } from 'lucide-react';
-import { subDays, subMonths, subYears } from 'date-fns';
+import { subDays, subMonths, subYears, startOfDay } from 'date-fns';
 import { PRCard } from '../components/PRCard';
 import { useMyPullRequests } from '../hooks/useAdo';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
@@ -21,7 +21,7 @@ const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
 ];
 
 function getTimeCutoff(filter: TimeFilter): string | undefined {
-  const now = new Date();
+  const now = startOfDay(new Date());
   switch (filter) {
     case '7d': return subDays(now, 7).toISOString();
     case '30d': return subDays(now, 30).toISOString();
@@ -86,7 +86,7 @@ export function MyPRs() {
   const [repoFilter, setRepoFilter] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
-  const minTime = getTimeCutoff(timeFilter);
+  const minTime = useMemo(() => getTimeCutoff(timeFilter), [timeFilter]);
   const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status, minTime);
   const reviewingPrIds = useReviewingStore((s) => s.prIds);
 
