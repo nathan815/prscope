@@ -14,7 +14,7 @@ export function registerMsalHooks(useMsal: MsalHook, useIsAuthenticated: IsAuthH
   _useIsAuthenticated = useIsAuthenticated;
 }
 
-export type AuthMode = 'oauth' | 'pat';
+export type AuthMode = 'oauth' | 'pat' | 'az-cli';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -38,12 +38,17 @@ export function useAuth(): AuthState {
 
   const oauthAccount = msalState?.accounts?.[0] ?? null;
 
+  const azCliAuthenticated = useSettingsStore((s) => s.azCliAuthenticated);
+
   const isAuthenticated = useMemo(() => {
     if (authMode === 'oauth') {
       return oauthAuthenticated && organization.length > 0;
     }
+    if (authMode === 'az-cli') {
+      return azCliAuthenticated && organization.length > 0;
+    }
     return organization.length > 0 && pat.length > 0;
-  }, [authMode, oauthAuthenticated, organization, pat]);
+  }, [authMode, oauthAuthenticated, azCliAuthenticated, organization, pat]);
 
   const userName = authMode === 'oauth'
     ? (storedUserName || (oauthAccount?.name ?? ''))
@@ -68,6 +73,16 @@ export function useAuth(): AuthState {
   const getToken = useCallback(async (): Promise<string> => {
     if (authMode === 'pat') {
       return pat;
+    }
+
+    if (authMode === 'az-cli') {
+      const res = await fetch('/api/auth/az-cli-token');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `az cli token failed: ${res.status}`);
+      }
+      const data = await res.json() as { accessToken: string };
+      return data.accessToken;
     }
 
     if (!msalInstance || !oauthAccount) {

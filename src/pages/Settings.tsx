@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, CheckCircle2, AlertCircle, Loader2, Telescope, LogIn, LogOut, KeyRound, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, CheckCircle2, AlertCircle, Loader2, Telescope, LogIn, LogOut, KeyRound, Shield, Terminal } from 'lucide-react';
 import { useSettingsStore } from '../store/settings';
 import { configureClient, getConnectionData } from '../api/client';
 import { useAuth } from '../auth/useAuth';
 import { msalAvailable } from '../auth/msalConfig';
 
 export function Settings({ firstRun }: { firstRun?: boolean }) {
-  const { organization, pat, theme, authMode, setOrganization, setPat, setUser, setTheme, setAuthMode } = useSettingsStore();
+  const { organization, pat, theme, authMode, setOrganization, setPat, setUser, setTheme, setAuthMode, setAzCliAuthenticated } = useSettingsStore();
   const auth = useAuth();
 
   const [orgInput, setOrgInput] = useState(organization);
@@ -68,6 +68,40 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
     }
   };
 
+  const handleAzCliConnect = async () => {
+    if (!orgInput) return;
+    setTesting(true);
+    setTestResult(null);
+
+    const azCliTokenProvider = async () => {
+      const res = await fetch('/api/auth/az-cli-token');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `az cli token failed: ${res.status}`);
+      }
+      const data = await res.json() as { accessToken: string };
+      return data.accessToken;
+    };
+
+    configureClient(orgInput, 'az-cli', azCliTokenProvider);
+
+    try {
+      const data = await getConnectionData();
+      const displayName = data.authenticatedUser.providerDisplayName;
+      const userId = data.authenticatedUser.id;
+      setTestResult({ ok: true, message: `Connected as ${displayName}` });
+      setOrganization(orgInput);
+      setUser(userId, displayName);
+      setAuthMode('az-cli');
+      setAzCliAuthenticated(true);
+    } catch (err) {
+      setAzCliAuthenticated(false);
+      setTestResult({ ok: false, message: (err as Error).message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const handleOAuthLogout = async () => {
     await auth.logout();
     setTestResult(null);
@@ -109,7 +143,18 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
 
         <div>
           <label className="block text-sm font-medium mb-2">Authentication Method</label>
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <button
+              onClick={() => setAuthMode('az-cli')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedMode === 'az-cli'
+                  ? 'bg-ado-blue text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              <Terminal className="w-4 h-4" />
+              Azure CLI
+            </button>
             <button
               onClick={() => setAuthMode('oauth')}
               disabled={!msalAvailable}
@@ -134,6 +179,31 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
               Personal Access Token
             </button>
           </div>
+
+          {selectedMode === 'az-cli' && (
+            <div className="space-y-3">
+              {auth.isAuthenticated && authMode === 'az-cli' ? (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <span className="text-sm">Connected as <strong>{auth.userName}</strong></span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Uses your existing <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">az login</code> session. No app registration or PAT needed.
+                  </p>
+                  <button
+                    onClick={handleAzCliConnect}
+                    disabled={testing || !orgInput}
+                    className="flex items-center gap-2 bg-ado-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-ado-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Terminal className="w-4 h-4" />}
+                    Connect via Azure CLI
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {selectedMode === 'oauth' && !msalAvailable && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm">

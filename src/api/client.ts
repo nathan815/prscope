@@ -25,7 +25,7 @@ async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado'): Promise
   let url: string;
   let headers: Record<string, string>;
 
-  if (cachedMode === 'oauth') {
+  if (cachedMode === 'oauth' || cachedMode === 'az-cli') {
     const baseUrl = base === 'ado' ? 'https://dev.azure.com' : 'https://vssps.dev.azure.com';
     url = `${baseUrl}/${cachedOrg}${path}`;
     headers = { 'Authorization': `Bearer ${token}` };
