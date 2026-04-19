@@ -44,6 +44,21 @@ export function useRepositories(projectName: string) {
   });
 }
 
+export function useMultiProjectRepositories(projectNames: string[]) {
+  const { isConfigured } = useConfiguredClient();
+  return useQuery({
+    queryKey: ['repositories', ...projectNames],
+    queryFn: async () => {
+      const results = await Promise.all(
+        projectNames.map((name) => api.getRepositories(name))
+      );
+      return results.flat().sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: isConfigured && projectNames.length > 0,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export function usePullRequests(
   favoriteRepo: FavoriteRepo,
   options: { status?: string; creatorId?: string; reviewerId?: string } = {}

@@ -1,25 +1,37 @@
 import { useState, useMemo } from 'react';
-import { Star, Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
-import { useProjects, useRepositories } from '../hooks/useAdo';
+import { Star, Search, Loader2, FolderOpen, X, Check } from 'lucide-react';
+import { useProjects, useMultiProjectRepositories } from '../hooks/useAdo';
 import { useFavoritesStore } from '../store/favorites';
-import type { FavoriteRepo } from '../types';
+import { useSelectedProjectsStore } from '../store/selectedProjects';
 
 export function Repos() {
   const [search, setSearch] = useState('');
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [projectSearch, setProjectSearch] = useState('');
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+
   const favorites = useFavoritesStore((s) => s.repos);
   const toggleRepo = useFavoritesStore((s) => s.toggleRepo);
   const isFavorite = useFavoritesStore((s) => s.isFavorite);
-  const { data: projects, isLoading: loadingProjects, error: projectsError } = useProjects();
 
-  const toggleProject = (name: string) => {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
+  const selectedProjects = useSelectedProjectsStore((s) => s.projects);
+  const toggleProject = useSelectedProjectsStore((s) => s.toggleProject);
+  const isProjectSelected = useSelectedProjectsStore((s) => s.isSelected);
+  const removeProject = useSelectedProjectsStore((s) => s.removeProject);
+
+  const { data: allProjects, isLoading: loadingProjects } = useProjects();
+  const { data: repos, isLoading: loadingRepos } = useMultiProjectRepositories(
+    selectedProjects.map((p) => p.name)
+  );
+
+  const filteredProjects = useMemo(
+    () => allProjects?.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase())),
+    [allProjects, projectSearch]
+  );
+
+  const filteredRepos = useMemo(
+    () => repos?.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
+    [repos, search]
+  );
 
   const filteredFavorites = useMemo(
     () => favorites.filter((r) => r.repoName.toLowerCase().includes(search.toLowerCase())),
@@ -33,27 +45,116 @@ export function Repos() {
         Repositories
       </h1>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input
-          type="text"
-          placeholder="Search repositories..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40 focus:border-ado-blue"
-        />
-      </div>
+      {/* Project selection */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Projects</label>
+          <button
+            onClick={() => setShowProjectPicker(!showProjectPicker)}
+            className="text-xs text-ado-blue hover:underline"
+          >
+            {showProjectPicker ? 'Done' : 'Edit projects'}
+          </button>
+        </div>
 
+        {selectedProjects.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {selectedProjects.map((p) => (
+              <span
+                key={p.id}
+                className="inline-flex items-center gap-1.5 bg-ado-blue/10 text-ado-blue pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium"
+              >
+                <FolderOpen className="w-3 h-3" />
+                {p.name}
+                <button
+                  onClick={() => removeProject(p.id)}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-ado-blue/20 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {selectedProjects.length === 0 && !showProjectPicker && (
+          <button
+            onClick={() => setShowProjectPicker(true)}
+            className="w-full py-8 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl text-sm text-zinc-500 dark:text-zinc-400 hover:border-ado-blue hover:text-ado-blue transition-colors"
+          >
+            Select projects to browse repositories
+          </button>
+        )}
+
+        {showProjectPicker && (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {loadingProjects && (
+                <div className="flex items-center gap-2 px-4 py-3 text-sm text-zinc-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading projects...
+                </div>
+              )}
+              {filteredProjects?.map((project) => {
+                const selected = isProjectSelected(project.id);
+                return (
+                  <button
+                    key={project.id}
+                    onClick={() => toggleProject({ id: project.id, name: project.name })}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${
+                      selected ? 'bg-ado-blue/5' : ''
+                    }`}
+                  >
+                    <span className={selected ? 'font-medium text-ado-blue' : ''}>{project.name}</span>
+                    {selected && <Check className="w-4 h-4 text-ado-blue" />}
+                  </button>
+                );
+              })}
+              {filteredProjects?.length === 0 && (
+                <p className="px-4 py-3 text-sm text-zinc-400">No projects match.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Search repos */}
+      {selectedProjects.length > 0 && (
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Search repositories..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40 focus:border-ado-blue"
+          />
+        </div>
+      )}
+
+      {/* Favorited repos */}
       {filteredFavorites.length > 0 && (
         <section className="mb-8">
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
             Favorited ({filteredFavorites.length})
           </h2>
-          <div className="grid gap-2">
+          <div className="grid gap-1">
             {filteredFavorites.map((repo) => (
               <RepoRow
                 key={repo.repoId}
-                repoId={repo.repoId}
                 repoName={repo.repoName}
                 projectName={repo.projectName}
                 isFavorite={true}
@@ -64,105 +165,46 @@ export function Repos() {
         </section>
       )}
 
-      <section>
-        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
-          All Projects
-        </h2>
+      {/* All repos from selected projects */}
+      {selectedProjects.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
+            {search ? 'Results' : 'All Repositories'}
+            {filteredRepos && ` (${filteredRepos.length})`}
+          </h2>
 
-        {projectsError && (
-          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-            <p className="text-sm text-red-700 dark:text-red-400">{(projectsError as Error).message}</p>
-          </div>
-        )}
-
-        {loadingProjects && (
-          <div className="flex items-center gap-2 text-sm text-zinc-500">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading projects...
-          </div>
-        )}
-
-        {projects && (
-          <div className="space-y-1">
-            {projects.map((project) => (
-              <ProjectSection
-                key={project.id}
-                projectName={project.name}
-                isExpanded={expandedProjects.has(project.name)}
-                onToggle={() => toggleProject(project.name)}
-                search={search}
-                isFavorite={isFavorite}
-                onToggleRepo={toggleRepo}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function ProjectSection({
-  projectName,
-  isExpanded,
-  onToggle,
-  search,
-  isFavorite,
-  onToggleRepo,
-}: {
-  projectName: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-  search: string;
-  isFavorite: (repoId: string) => boolean;
-  onToggleRepo: (repo: FavoriteRepo) => void;
-}) {
-  const { data: repos, isLoading } = useRepositories(isExpanded ? projectName : '');
-
-  const filteredRepos = useMemo(
-    () => repos?.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
-    [repos, search]
-  );
-
-  return (
-    <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left"
-      >
-        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        {projectName}
-      </button>
-
-      {isExpanded && (
-        <div className="border-t border-zinc-200 dark:border-zinc-800">
-          {isLoading && (
-            <div className="flex items-center gap-2 px-4 py-3 text-sm text-zinc-500">
+          {loadingRepos && (
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Loading repos...
+              Loading repositories...
             </div>
           )}
-          {filteredRepos && filteredRepos.length === 0 && (
-            <p className="px-4 py-3 text-sm text-zinc-400">No repos found.</p>
+
+          {filteredRepos && filteredRepos.length === 0 && !loadingRepos && (
+            <p className="text-sm text-zinc-400 py-4">No repositories found.</p>
           )}
-          {filteredRepos?.map((repo) => (
-            <RepoRow
-              key={repo.id}
-              repoId={repo.id}
-              repoName={repo.name}
-              projectName={projectName}
-              isFavorite={isFavorite(repo.id)}
-              onToggle={() =>
-                onToggleRepo({
-                  repoId: repo.id,
-                  repoName: repo.name,
-                  projectId: repo.project.id,
-                  projectName: projectName,
-                })
-              }
-            />
-          ))}
-        </div>
+
+          {filteredRepos && filteredRepos.length > 0 && (
+            <div className="grid gap-1">
+              {filteredRepos.map((repo) => (
+                <RepoRow
+                  key={repo.id}
+                  repoName={repo.name}
+                  projectName={repo.project.name}
+                  isFavorite={isFavorite(repo.id)}
+                  onToggle={() =>
+                    toggleRepo({
+                      repoId: repo.id,
+                      repoName: repo.name,
+                      projectId: repo.project.id,
+                      projectName: repo.project.name,
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );
@@ -174,24 +216,20 @@ function RepoRow({
   isFavorite,
   onToggle,
 }: {
-  repoId: string;
   repoName: string;
   projectName: string;
   isFavorite: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-      <div>
+    <div className="flex items-center justify-between px-4 py-2 rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors">
+      <div className="min-w-0">
         <span className="text-sm font-medium">{repoName}</span>
         <span className="text-xs text-zinc-400 ml-2">{projectName}</span>
       </div>
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-        className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+        onClick={onToggle}
+        className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex-shrink-0"
         title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       >
         <Star
