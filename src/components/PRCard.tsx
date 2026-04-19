@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ExternalLink, GitMerge, Clock, Eye } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
-import { VoteBadge } from './VoteBadge';
+import { VoteBadge, sortReviewers } from './VoteBadge';
 import { useSettingsStore } from '../store/settings';
 import { useReviewingStore, prKey } from '../store/reviewing';
 import { buildPrWebUrl } from '../api/client';
@@ -102,8 +102,8 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
             <span className="text-xs text-zinc-600 dark:text-zinc-400">{pr.createdBy.displayName}</span>
           </div>
 
-          <div className="flex items-center gap-1">
-            {pr.reviewers.slice(0, 5).map((r) => (
+          <div className="flex items-center gap-1.5">
+            {sortReviewers(pr.reviewers).slice(0, 5).map((r) => (
               <VoteBadge key={r.id} reviewer={r} />
             ))}
             {pr.reviewers.length > 5 && (
