@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Star, Search, Loader2, FolderOpen, X, Check } from 'lucide-react';
 import { useProjects, useMultiProjectRepositories } from '../hooks/useAdo';
 import { useFavoritesStore } from '../store/favorites';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
+
+const ROW_HEIGHT = 40;
 
 export function Repos() {
   const [search, setSearch] = useState('');
@@ -37,6 +40,14 @@ export function Repos() {
     () => favorites.filter((r) => r.repoName.toLowerCase().includes(search.toLowerCase())),
     [favorites, search]
   );
+
+  const repoListRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filteredRepos?.length ?? 0,
+    getScrollElement: () => repoListRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 20,
+  });
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -137,7 +148,7 @@ export function Repos() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search repositories..."
+            placeholder={`Search${repos ? ` ${repos.length.toLocaleString()}` : ''} repositories...`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40 focus:border-ado-blue"
@@ -165,12 +176,12 @@ export function Repos() {
         </section>
       )}
 
-      {/* All repos from selected projects */}
+      {/* All repos from selected projects — virtualized */}
       {selectedProjects.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
             {search ? 'Results' : 'All Repositories'}
-            {filteredRepos && ` (${filteredRepos.length})`}
+            {filteredRepos && ` (${filteredRepos.length.toLocaleString()})`}
           </h2>
 
           {loadingRepos && (
@@ -185,23 +196,45 @@ export function Repos() {
           )}
 
           {filteredRepos && filteredRepos.length > 0 && (
-            <div className="grid gap-1">
-              {filteredRepos.map((repo) => (
-                <RepoRow
-                  key={repo.id}
-                  repoName={repo.name}
-                  projectName={repo.project.name}
-                  isFavorite={isFavorite(repo.id)}
-                  onToggle={() =>
-                    toggleRepo({
-                      repoId: repo.id,
-                      repoName: repo.name,
-                      projectId: repo.project.id,
-                      projectName: repo.project.name,
-                    })
-                  }
-                />
-              ))}
+            <div
+              ref={repoListRef}
+              className="overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+              style={{ height: Math.min(filteredRepos.length * ROW_HEIGHT, 600) }}
+            >
+              <div
+                style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const repo = filteredRepos[virtualRow.index]!;
+                  return (
+                    <div
+                      key={repo.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: ROW_HEIGHT,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <RepoRow
+                        repoName={repo.name}
+                        projectName={repo.project.name}
+                        isFavorite={isFavorite(repo.id)}
+                        onToggle={() =>
+                          toggleRepo({
+                            repoId: repo.id,
+                            repoName: repo.name,
+                            projectId: repo.project.id,
+                            projectName: repo.project.name,
+                          })
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>
@@ -222,8 +255,8 @@ function RepoRow({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors">
-      <div className="min-w-0">
+    <div className="flex items-center justify-between px-4 h-10 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+      <div className="min-w-0 truncate">
         <span className="text-sm font-medium">{repoName}</span>
         <span className="text-xs text-zinc-400 ml-2">{projectName}</span>
       </div>
