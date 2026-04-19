@@ -13,7 +13,7 @@ interface PRCardProps {
     title: string;
     status: string;
     isDraft: boolean;
-    createdBy: { displayName: string; imageUrl: string };
+    createdBy: { id: string; displayName: string; imageUrl: string };
     creationDate: string;
     closedDate?: string;
     repository: { name: string; project: { name: string } };
@@ -31,14 +31,16 @@ function branchName(ref: string) {
 
 export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
   const org = useSettingsStore((s) => s.organization);
+  const userId = useSettingsStore((s) => s.userId);
   const webUrl = buildPrWebUrl(org, pr.repository.project.name, pr.repository.name, pr.pullRequestId);
   const key = prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId);
   const isReviewing = useReviewingStore((s) => s.isReviewing(key));
   const toggle = useReviewingStore((s) => s.toggle);
   const add = useReviewingStore((s) => s.add);
+  const isMyPr = pr.createdBy.id === userId;
 
   const handleClick = () => {
-    if (!isReviewing) {
+    if (!isReviewing && !isMyPr) {
       add(key);
       toast(`Marked PR #${pr.pullRequestId} as Reviewing`);
     }
