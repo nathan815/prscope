@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { ExternalLink, GitMerge, Clock, BookOpen } from 'lucide-react';
+import { ExternalLink, GitMerge, Clock, Eye } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { VoteBadge } from './VoteBadge';
 import { useSettingsStore } from '../store/settings';
@@ -133,7 +133,7 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
               : 'text-zinc-300 dark:text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-ado-blue hover:bg-ado-blue/5'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <Eye className="w-4 h-4" />
         </button>
       )}
     </div>
