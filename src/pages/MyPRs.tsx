@@ -106,22 +106,10 @@ export function MyPRs() {
   const minTime = useMemo(() => getTimeCutoff(timeFilter), [timeFilter]);
   const { data, isLoading, error, refetch, isFetching } = useMyPullRequests(status, minTime);
   const reviewingPrIds = useReviewingStore((s) => s.prIds);
-
-  if (selectedProjects.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center">
-        <GitPullRequest className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
-        <h2 className="text-lg font-semibold mb-2">No projects selected</h2>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
-          Head to the <strong>Repos</strong> tab and select your projects to start seeing PRs here.
-        </p>
-      </div>
-    );
-  }
+  const userId = useSettingsStore((s) => s.userId);
 
   const allAssigned = data?.assigned;
   const allCreated = data?.created;
-  const userId = useSettingsStore((s) => s.userId);
 
   const allFetchedPrs = useMemo(() => {
     const prs = [...(allCreated ?? []), ...(allAssigned ?? [])];
@@ -174,6 +162,18 @@ export function MyPRs() {
     () => repoFilter ? allPrs?.filter((pr) => pr.repository.name === repoFilter) : allPrs,
     [allPrs, repoFilter]
   );
+
+  if (selectedProjects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        <GitPullRequest className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
+        <h2 className="text-lg font-semibold mb-2">No projects selected</h2>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
+          Head to the <strong>Repos</strong> tab and select your projects to start seeing PRs here.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
