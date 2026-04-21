@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, TrendingUp, Calendar, X } from 'lucide-react';
-import { subDays, subMonths, subYears, isAfter, format, startOfDay, endOfDay, startOfYear, endOfYear } from 'date-fns';
+import { subDays, subMonths, subYears, isAfter, format, startOfDay, endOfDay, startOfYear, endOfYear, formatDistanceToNow } from 'date-fns';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { ContributionGraph } from '../components/ContributionGraph';
@@ -55,7 +55,10 @@ export function Profile() {
   const timeRange = (searchParams.get('range') as TimeRange) || 'last-1y';
   const fetchLimit = Number(searchParams.get('limit')) || 500;
   const selectedDay = searchParams.get('day') || null;
+  const reviewAnalysisLimit = Number(searchParams.get('rlimit')) || 50;
   const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [reviewRepoFilter, setReviewRepoFilter] = useState<string | null>(null);
+  const [reviewHistoryVisible, setReviewHistoryVisible] = useState(100);
 
   const setParam = (updates: Record<string, string | null>) => {
     setSearchParams((prev) => {
@@ -69,7 +72,7 @@ export function Profile() {
   };
 
   const bounds = useMemo(() => getTimeRangeBounds(timeRange), [timeRange]);
-  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit, bounds.minTime, bounds.maxTime);
+  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit, bounds.minTime, bounds.maxTime, reviewAnalysisLimit);
 
   const userInfoRef = useRef<{ displayName: string; uniqueName: string; imageUrl: string } | null>(null);
   if (prs.data) {
@@ -285,59 +288,180 @@ export function Profile() {
             ))}
           </div>
         </div>
-      ) : (
+      ) : prs.isLoading ? (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
           <Skeleton className="h-5 w-36 mb-4" />
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} className="h-8" />)}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Review Impact */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
-        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4" />
-          Review Impact
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Review Impact
+          </h2>
+          <div className="flex items-center gap-2">
+            {(reviewImpact.data?.repoBreakdown ?? []).length > 1 && (
+              <select
+                value={reviewRepoFilter ?? ''}
+                onChange={(e) => setReviewRepoFilter(e.target.value || null)}
+                className="text-[11px] font-medium bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ado-blue"
+              >
+                <option value="">All repos</option>
+                {(reviewImpact.data?.repoBreakdown ?? []).map((r) => (
+                  <option key={`${r.project}/${r.name}`} value={r.name}>{r.name}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={reviewAnalysisLimit}
+              onChange={(e) => { setParam({ rlimit: e.target.value }); setReviewRepoFilter(null); }}
+              className="text-[11px] font-medium bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ado-blue"
+            >
+              {[20, 50, 100].map((n) => (
+                <option key={n} value={n}>Last {n} PRs</option>
+              ))}
+            </select>
+          </div>
+        </div>
         {reviewImpact.isLoading && (
           <div className="flex items-center gap-2 text-sm text-zinc-500">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Analyzing review threads...
+            Analyzing {reviewAnalysisLimit} review threads...
           </div>
         )}
-        {reviewImpact.data && (
-          <div>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <StatCard label="Comments Left" value={reviewImpact.data.totalComments} />
-              <StatCard label="Avg per PR" value={reviewImpact.data.avgCommentsPerPr.toFixed(1)} />
-              <StatCard label="PR Completion Rate" value={`${Math.round(reviewImpact.data.completionRate * 100)}%`} />
-            </div>
-            <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-green-600" />
-                {reviewImpact.data.completedCount} completed
-              </span>
-              <span className="flex items-center gap-1">
-                <XCircle className="w-3 h-3 text-red-500" />
-                {reviewImpact.data.abandonedCount} abandoned
-              </span>
-              <span>
-                across {reviewImpact.data.totalPrsAnalyzed} recent reviewed PRs
-              </span>
-            </div>
-            {reviewImpact.data.threadStatuses && Object.keys(reviewImpact.data.threadStatuses).length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {Object.entries(reviewImpact.data.threadStatuses).map(([status, count]) => (
-                  <span key={status} className="text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">
-                    {status}: {count}
-                  </span>
-                ))}
+        {reviewImpact.error && (
+          <p className="text-sm text-red-500">Failed to load review data: {(reviewImpact.error as Error).message}</p>
+        )}
+        {reviewImpact.data && (() => {
+          const data = reviewImpact.data;
+          const repoBreakdown = data.repoBreakdown ?? [];
+          const filteredRepos = reviewRepoFilter
+            ? repoBreakdown.filter((r) => r.name === reviewRepoFilter)
+            : repoBreakdown;
+          const filteredComments = reviewRepoFilter
+            ? filteredRepos.reduce((sum, r) => sum + r.comments, 0)
+            : data.totalComments;
+          const filteredPrs = reviewRepoFilter
+            ? filteredRepos.reduce((sum, r) => sum + r.prsReviewed, 0)
+            : data.totalPrsAnalyzed;
+
+          return (
+            <div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <StatCard label="Comments Left" value={filteredComments} />
+                <StatCard label="Avg per Review" value={filteredPrs > 0 ? (filteredComments / filteredPrs).toFixed(1) : '0'} />
+                <StatCard label="Completion Rate" value={`${Math.round(data.completionRate * 100)}%`} />
               </div>
-            )}
-          </div>
-        )}
-        {!reviewImpact.isLoading && !reviewImpact.data && stats?.totalReviewed === 0 && (
+              <div className="flex items-center gap-3 flex-wrap text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+                <span className="flex items-center gap-1 text-green-600">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {data.approved} approved
+                </span>
+                <span className="flex items-center gap-1 text-green-500">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {data.approvedWithSuggestions} w/ suggestions
+                </span>
+                <span className="flex items-center gap-1 text-orange-500">
+                  {data.waitingForAuthor} waiting for author
+                </span>
+                <span className="flex items-center gap-1 text-red-500">
+                  <XCircle className="w-3 h-3" />
+                  {data.rejected} rejected
+                </span>
+                <span className="text-zinc-400">·</span>
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-green-600" />
+                  {data.completedCount} PR completed
+                </span>
+                <span className="flex items-center gap-1">
+                  <XCircle className="w-3 h-3 text-red-500" />
+                  {data.abandonedCount} PR abandoned
+                </span>
+              </div>
+              {filteredRepos.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">By Repository</h3>
+                  <div className="space-y-1">
+                    {filteredRepos.map((repo) => (
+                      <div key={`${repo.project}/${repo.name}`} className="flex items-center justify-between py-1.5 text-sm">
+                        <div>
+                          <span className="font-medium">{repo.name}</span>
+                          <span className="text-xs text-zinc-400 ml-2">{repo.project}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-zinc-500">
+                          <span>{repo.prsReviewed} PRs</span>
+                          <span>{repo.comments} comments</span>
+                          <span className="text-zinc-400">{repo.prsReviewed > 0 ? (repo.comments / repo.prsReviewed).toFixed(1) : '0'}/PR</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.threadStatuses && Object.keys(data.threadStatuses).length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Object.entries(data.threadStatuses).map(([status, count]) => (
+                    <span key={status} className="text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">
+                      {status}: {count}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {data.reviewHistory && data.reviewHistory.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Review History
+                      {data.prsWithVoteChanges > 0 && (
+                        <span className="ml-2 text-ado-blue normal-case font-normal">{data.prsWithVoteChanges} PR{data.prsWithVoteChanges > 1 ? 's' : ''} with vote changes</span>
+                      )}
+                    </h3>
+                  </div>
+                  <div className="space-y-1 max-h-80 overflow-y-auto">
+                    {data.reviewHistory.slice(0, reviewHistoryVisible).map((event, i) => {
+                      const url = buildPrWebUrl(useSettingsStore.getState().organization, event.project, event.repo, event.prId);
+                      return (
+                        <div key={i} className="flex items-center justify-between py-1 text-xs">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {event.type === 'vote' ? (
+                              <VoteLabel vote={event.vote} />
+                            ) : (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-ado-blue/10 text-ado-blue">
+                                {event.count === 1 ? 'commented' : `${event.count} comments`}
+                              </span>
+                            )}
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 min-w-0 hover:text-ado-blue transition-colors">
+                              <span className="text-zinc-400">#{event.prId}</span>
+                              <span className="truncate">{event.prTitle}</span>
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2 text-zinc-400">
+                            <span>{event.repo}</span>
+                            <span title={format(new Date(event.date), 'MMM d, yyyy h:mm a')}>{formatDistanceToNow(new Date(event.date), { addSuffix: true })}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {data.reviewHistory.length > reviewHistoryVisible && (
+                    <button
+                      onClick={() => setReviewHistoryVisible((v) => v + 100)}
+                      className="mt-2 text-xs text-ado-blue hover:underline"
+                    >
+                      View more events ({data.reviewHistory.length - reviewHistoryVisible} remaining)
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+        {!reviewImpact.isLoading && !reviewImpact.data && !reviewImpact.error && (
           <p className="text-sm text-zinc-400">No review activity found.</p>
         )}
       </div>
@@ -561,9 +685,24 @@ function MiniPrRow({ pr, label }: { pr: PRItem; label: string }) {
         }`}>
           {label}
         </span>
+        <span className="text-zinc-400">#{pr.pullRequestId}</span>
         <span className="truncate">{pr.title}</span>
       </div>
       <span className="text-xs text-zinc-400 flex-shrink-0 ml-2">{pr.repository.name}</span>
     </a>
+  );
+}
+
+function VoteLabel({ vote }: { vote: number }) {
+  const label = vote >= 10 ? 'approved' : vote >= 5 ? 'approved w/ suggestions' : vote <= -10 ? 'rejected' : vote <= -5 ? 'waiting' : 'reset';
+  const color = vote >= 10 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+    : vote >= 5 ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+    : vote <= -10 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+    : vote <= -5 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
+    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500';
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${color}`}>
+      {label}
+    </span>
   );
 }

@@ -168,6 +168,7 @@ export async function getPullRequestThreads(
       commentType: string;
     }[];
     threadContext?: { filePath: string };
+    properties?: Record<string, { $type?: string; $value: string }>;
   }>>(
     `/${encodeURIComponent(projectName)}/_apis/git/repositories/${repositoryId}/pullrequests/${pullRequestId}/threads?api-version=7.1`
   );
