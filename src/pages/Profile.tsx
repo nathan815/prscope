@@ -1,12 +1,13 @@
 import { useMemo, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, TrendingUp, Calendar, X } from 'lucide-react';
+import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, TrendingUp, Calendar, X, UserPlus, UserMinus } from 'lucide-react';
 import { subDays, subMonths, subYears, isAfter, format, startOfDay, endOfDay, startOfYear, endOfYear, formatDistanceToNow } from 'date-fns';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { ContributionGraph } from '../components/ContributionGraph';
 import { Skeleton, SkeletonCard } from '../components/Skeleton';
 import { PRCard } from '../components/PRCard';
+import { useFollowsStore } from '../store/follows';
 import { useSettingsStore } from '../store/settings';
 import { buildPrWebUrl } from '../api/client';
 
@@ -143,7 +144,7 @@ export function Profile() {
         <div className="flex items-center gap-4">
           {userInfo?.imageUrl ? (
             <img
-              src={userInfo.imageUrl}
+              src={`${userInfo.imageUrl}${userInfo.imageUrl.includes('?') ? '&' : '?'}size=4`}
               alt={userName ?? ''}
               className="w-16 h-16 rounded-full"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -159,6 +160,7 @@ export function Profile() {
               <p className="text-sm text-zinc-500 dark:text-zinc-400">{userInfo.uniqueName}</p>
             )}
           </div>
+          <FollowButton userId={userId} userInfo={userInfo} />
         </div>
 
         {stats ? (
@@ -704,5 +706,34 @@ function VoteLabel({ vote }: { vote: number }) {
     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${color}`}>
       {label}
     </span>
+  );
+}
+
+function FollowButton({ userId, userInfo }: {
+  userId: string;
+  userInfo: { displayName: string; uniqueName: string; imageUrl: string } | null;
+}) {
+  const currentUserId = useSettingsStore((s) => s.userId);
+  const isFollowing = useFollowsStore((s) => s.isFollowing(userId));
+  const toggleUser = useFollowsStore((s) => s.toggleUser);
+
+  if (userId === currentUserId) return null;
+
+  return (
+    <button
+      onClick={() => toggleUser({
+        id: userId,
+        displayName: userInfo?.displayName ?? userId,
+        uniqueName: userInfo?.uniqueName ?? '',
+        imageUrl: userInfo?.imageUrl ?? '',
+      })}
+      className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors ml-auto ${
+        isFollowing
+          ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-red-500'
+          : 'bg-ado-blue text-white hover:bg-ado-blue-dark'
+      }`}
+    >
+      {isFollowing ? <><UserMinus className="w-4 h-4" /> Unfollow</> : <><UserPlus className="w-4 h-4" /> Follow</>}
+    </button>
   );
 }

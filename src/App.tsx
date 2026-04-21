@@ -7,6 +7,7 @@ import { Repos } from './pages/Repos';
 import { Feed } from './pages/Feed';
 import { Settings } from './pages/Settings';
 import { Profile } from './pages/Profile';
+import { People } from './pages/People';
 import { useSettingsStore } from './store/settings';
 import { useAuth } from './auth/useAuth';
 import { configureClient } from './api/client';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/" element={<MyPRs />} />
         <Route path="/repos" element={<Repos />} />
         <Route path="/feed" element={<Feed />} />
+        <Route path="/people" element={<People />} />
         <Route path="/profile/:userId" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />

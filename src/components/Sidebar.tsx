@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { GitPullRequest, Star, Rss, Settings, Telescope, User } from 'lucide-react';
+import { GitPullRequest, Star, Rss, Settings, Telescope, User, Users } from 'lucide-react';
 import { useSettingsStore } from '../store/settings';
 import { useFavoritesStore } from '../store/favorites';
 
@@ -13,6 +13,7 @@ export function Sidebar() {
     { to: '/', icon: GitPullRequest, label: 'My PRs' },
     { to: `/profile/${userId}`, icon: User, label: 'My Profile' },
     { to: '/repos', icon: Star, label: 'Repos' },
+    { to: '/people', icon: Users, label: 'People' },
     { to: '/feed', icon: Rss, label: 'Feed' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];

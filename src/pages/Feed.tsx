@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye, ThumbsDown, Clock, EyeOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useFollowsStore } from '../store/follows';
@@ -160,8 +161,10 @@ export function Feed() {
         <div className="flex flex-wrap gap-2 mb-6">
           {follows.map((user) => (
             <span key={user.id} className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 pl-1.5 pr-2 py-1 rounded-full text-xs">
-              <img src={user.imageUrl} alt="" className="w-4 h-4 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              {user.displayName}
+              <Link to={`/profile/${user.id}`} className="flex items-center gap-1.5 hover:text-ado-blue transition-colors">
+                <img src={user.imageUrl} alt="" className="w-4 h-4 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                {user.displayName}
+              </Link>
               <button onClick={() => removeUser(user.id)} className="ml-1 text-zinc-400 hover:text-red-500">
                 <X className="w-3 h-3" />
               </button>
@@ -226,7 +229,7 @@ const activityLabels: Record<string, string> = {
 function ActivityCard({ item, org }: {
   item: {
     type: string;
-    user: { displayName: string; imageUrl: string };
+    user: { id: string; displayName: string; imageUrl: string };
     pullRequest: {
       pullRequestId: number;
       title: string;
@@ -254,12 +257,12 @@ function ActivityCard({ item, org }: {
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5">
-          <img src={item.user.imageUrl} alt="" className="w-8 h-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-        </div>
+        <Link to={`/profile/${item.user.id}`} className="mt-0.5 flex-shrink-0">
+          <img src={item.user.imageUrl} alt="" className="w-8 h-8 rounded-full hover:ring-2 hover:ring-ado-blue/30 transition-all" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        </Link>
         <div className="flex-1 min-w-0">
           <p className="text-sm">
-            <span className="font-medium">{item.isSelf ? 'You' : item.user.displayName}</span>{' '}
+            <Link to={`/profile/${item.user.id}`} className="font-medium hover:text-ado-blue transition-colors">{item.isSelf ? 'You' : item.user.displayName}</Link>{' '}
             <span className="text-zinc-500 dark:text-zinc-400">{label}</span>{' '}
             <a href={webUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-ado-blue hover:underline">
               {item.pullRequest.title}
