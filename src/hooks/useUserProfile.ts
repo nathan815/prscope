@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { subYears, startOfDay } from 'date-fns';
 import { useSettingsStore } from '../store/settings';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
 import * as api from '../api/client';
 import { configureClient } from '../api/client';
 import { useAuth } from '../auth/useAuth';
+
+const ONE_YEAR_AGO = startOfDay(subYears(new Date(), 1)).toISOString();
 
 export function useUserProfile(userId: string, fetchLimit: number = 200) {
   const organization = useSettingsStore((s) => s.organization);
@@ -19,8 +22,8 @@ export function useUserProfile(userId: string, fetchLimit: number = 200) {
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewed] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit }),
-            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit }),
+            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit, minTime: ONE_YEAR_AGO }),
+            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit, minTime: ONE_YEAR_AGO }),
           ]);
           return { created, reviewed };
         })

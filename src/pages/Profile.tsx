@@ -1,16 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, ArrowLeft, TrendingUp } from 'lucide-react';
+import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, ArrowLeft, TrendingUp, Calendar, X } from 'lucide-react';
+import { subDays, subMonths, isAfter, format, startOfDay, endOfDay } from 'date-fns';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { ContributionGraph } from '../components/ContributionGraph';
 import { PRCard } from '../components/PRCard';
+import { useSettingsStore } from '../store/settings';
+import { buildPrWebUrl } from '../api/client';
 
 const PROFILE_LIMITS = [200, 500, 1000, 2000];
 
 export function Profile() {
   const { userId = '' } = useParams<{ userId: string }>();
   const [fetchLimit, setFetchLimit] = useState(500);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit);
 
   const userName = prs.data?.created?.[0]?.createdBy.displayName
@@ -113,8 +118,25 @@ export function Profile() {
             <TrendingUp className="w-4 h-4" />
             PR Activity
           </h2>
-          <ContributionGraph data={contributionData.data} />
+          <ContributionGraph
+            data={contributionData.data}
+            selectedDay={selectedDay}
+            onDayClick={setSelectedDay}
+          />
         </div>
+      )}
+
+      {/* Activity in time range */}
+      {prs.data && (
+        <ActivityRange
+          created={prs.data.created}
+          reviewed={prs.data.reviewed}
+          selectedDay={selectedDay}
+          activityRange={activityRange}
+          setActivityRange={setActivityRange}
+          onClearDay={() => setSelectedDay(null)}
+          userId={userId}
+        />
       )}
 
       {/* Top Repos */}
@@ -241,5 +263,175 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
       <div className="text-xl font-bold">{value}</div>
       <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{label}</div>
     </div>
+  );
+}
+
+type PRItem = {
+  pullRequestId: number;
+  title: string;
+  status: string;
+  isDraft: boolean;
+  createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string };
+  creationDate: string;
+  closedDate?: string;
+  mergeStatus?: string;
+  repository: { id: string; name: string; webUrl: string; project: { id: string; name: string } };
+  sourceRefName: string;
+  targetRefName: string;
+  reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string; vote: number; isRequired?: boolean }[];
+  labels?: { id: string; name: string; active: boolean }[];
+};
+
+const RANGE_OPTIONS: { value: '7d' | '30d' | '90d' | '1y'; label: string }[] = [
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: '90d', label: '90 days' },
+  { value: '1y', label: '1 year' },
+];
+
+function getRangeCutoff(range: '7d' | '30d' | '90d' | '1y'): Date {
+  const now = new Date();
+  switch (range) {
+    case '7d': return subDays(now, 7);
+    case '30d': return subDays(now, 30);
+    case '90d': return subMonths(now, 3);
+    case '1y': return subDays(now, 365);
+  }
+}
+
+function ActivityRange({
+  created,
+  reviewed,
+  selectedDay,
+  activityRange,
+  setActivityRange,
+  onClearDay,
+  userId,
+}: {
+  created: PRItem[];
+  reviewed: PRItem[];
+  selectedDay: string | null;
+  activityRange: '7d' | '30d' | '90d' | '1y';
+  setActivityRange: (r: '7d' | '30d' | '90d' | '1y') => void;
+  onClearDay: () => void;
+  userId: string;
+}) {
+  const isDay = selectedDay !== null;
+  const heading = isDay
+    ? `Activity on ${format(new Date(selectedDay + 'T00:00:00'), 'MMM d, yyyy')}`
+    : `Activity in the last ${RANGE_OPTIONS.find((r) => r.value === activityRange)?.label}`;
+
+  const filteredCreated = useMemo(() => {
+    if (isDay) {
+      const dayStart = startOfDay(new Date(selectedDay + 'T00:00:00'));
+      const dayEnd = endOfDay(dayStart);
+      return created.filter((pr) => {
+        const d = new Date(pr.creationDate);
+        return isAfter(d, dayStart) && d <= dayEnd;
+      });
+    }
+    const cutoff = getRangeCutoff(activityRange);
+    return created.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
+  }, [created, selectedDay, isDay, activityRange]);
+
+  const filteredReviewed = useMemo(() => {
+    if (isDay) {
+      const dayStart = startOfDay(new Date(selectedDay + 'T00:00:00'));
+      const dayEnd = endOfDay(dayStart);
+      return reviewed.filter((pr) => {
+        const d = new Date(pr.creationDate);
+        return isAfter(d, dayStart) && d <= dayEnd;
+      });
+    }
+    const cutoff = getRangeCutoff(activityRange);
+    return reviewed.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
+  }, [reviewed, selectedDay, isDay, activityRange]);
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold flex items-center gap-2">
+          <Calendar className="w-4 h-4" />
+          {heading}
+        </h2>
+        <div className="flex items-center gap-2">
+          {isDay && (
+            <button
+              onClick={onClearDay}
+              className="flex items-center gap-1 text-xs text-zinc-500 hover:text-ado-blue transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          )}
+          {!isDay && (
+            <div className="flex gap-1">
+              {RANGE_OPTIONS.map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => setActivityRange(r.value)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                    activityRange === r.value
+                      ? 'bg-ado-blue text-white'
+                      : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <StatCard label="PRs Created" value={filteredCreated.length} />
+        <StatCard label="PRs Reviewed" value={filteredReviewed.length} />
+      </div>
+
+      {(filteredCreated.length > 0 || filteredReviewed.length > 0) && (
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {filteredCreated.map((pr) => (
+            <MiniPrRow key={`c-${pr.pullRequestId}`} pr={pr} label="created" userId={userId} />
+          ))}
+          {filteredReviewed.map((pr) => {
+            const vote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
+            const label = vote >= 10 ? 'approved' : vote >= 5 ? 'approved w/ suggestions' : vote <= -10 ? 'rejected' : 'waiting';
+            return <MiniPrRow key={`r-${pr.pullRequestId}`} pr={pr} label={label} userId={userId} />;
+          })}
+        </div>
+      )}
+
+      {filteredCreated.length === 0 && filteredReviewed.length === 0 && (
+        <p className="text-sm text-zinc-400 text-center py-4">No activity in this period.</p>
+      )}
+    </div>
+  );
+}
+
+function MiniPrRow({ pr, label }: { pr: PRItem; label: string; userId: string }) {
+  const org = useSettingsStore((s) => s.organization);
+  const webUrl = buildPrWebUrl(org, pr.repository.project.name, pr.repository.name, pr.pullRequestId);
+
+  return (
+    <a
+      href={webUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-sm"
+    >
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+          label === 'created' ? 'bg-ado-blue/10 text-ado-blue'
+          : label === 'approved' || label === 'approved w/ suggestions' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+          : label === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+          : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
+        }`}>
+          {label}
+        </span>
+        <span className="truncate">{pr.title}</span>
+      </div>
+      <span className="text-xs text-zinc-400 flex-shrink-0 ml-2">{pr.repository.name}</span>
+    </a>
   );
 }

@@ -3,6 +3,8 @@ import { subDays, format, startOfWeek, eachDayOfInterval, getDay } from 'date-fn
 
 interface ContributionGraphProps {
   data: Map<string, { created: number; reviewed: number }>;
+  selectedDay?: string | null;
+  onDayClick?: (day: string | null) => void;
 }
 
 const CELL_SIZE = 12;
@@ -17,7 +19,7 @@ function getIntensityColor(count: number, isDark: boolean): string {
   return '#0078d4';
 }
 
-export function ContributionGraph({ data }: ContributionGraphProps) {
+export function ContributionGraph({ data, selectedDay, onDayClick }: ContributionGraphProps) {
   const isDark = document.documentElement.classList.contains('dark');
 
   const { grid, months, dateRange } = useMemo(() => {
@@ -25,7 +27,7 @@ export function ContributionGraph({ data }: ContributionGraphProps) {
     const start = startOfWeek(subDays(today, WEEKS * 7), { weekStartsOn: 0 });
     const days = eachDayOfInterval({ start, end: today });
 
-    const weeks: { date: Date; count: number; created: number; reviewed: number }[][] = [];
+    const weeks: { date: Date; key: string; count: number; created: number; reviewed: number }[][] = [];
     let currentWeek: typeof weeks[0] = [];
 
     for (const day of days) {
@@ -38,7 +40,7 @@ export function ContributionGraph({ data }: ContributionGraphProps) {
         weeks.push(currentWeek);
         currentWeek = [];
       }
-      currentWeek.push({ date: day, count: created + reviewed, created, reviewed });
+      currentWeek.push({ date: day, key, count: created + reviewed, created, reviewed });
     }
     if (currentWeek.length > 0) weeks.push(currentWeek);
 
@@ -85,6 +87,7 @@ export function ContributionGraph({ data }: ContributionGraphProps) {
         <svg
           width={grid.length * (CELL_SIZE + GAP) + 30}
           height={7 * (CELL_SIZE + GAP) + 20}
+          className="cursor-pointer"
         >
           {months.map((m, i) => (
             <text
@@ -112,21 +115,26 @@ export function ContributionGraph({ data }: ContributionGraphProps) {
             </text>
           ))}
           {grid.map((week, w) =>
-            week.map((day, d) => (
-              <rect
-                key={`${w}-${d}`}
-                x={w * (CELL_SIZE + GAP) + 30}
-                y={d * (CELL_SIZE + GAP) + 16}
-                width={CELL_SIZE}
-                height={CELL_SIZE}
-                rx={2}
-                fill={getIntensityColor(day.count, isDark)}
-              >
-                <title>
-                  {format(day.date, 'MMM d, yyyy')}: {day.created} created, {day.reviewed} reviewed
-                </title>
-              </rect>
-            ))
+            week.map((day, d) => {
+              const isSelected = selectedDay === day.key;
+              return (
+                <g key={`${w}-${d}`} onClick={() => onDayClick?.(isSelected ? null : day.key)}>
+                  <rect
+                    x={w * (CELL_SIZE + GAP) + 30}
+                    y={d * (CELL_SIZE + GAP) + 16}
+                    width={CELL_SIZE}
+                    height={CELL_SIZE}
+                    rx={2}
+                    fill={getIntensityColor(day.count, isDark)}
+                    stroke={isSelected ? '#0078d4' : 'none'}
+                    strokeWidth={isSelected ? 2 : 0}
+                  />
+                  <title>
+                    {format(day.date, 'MMM d, yyyy')}: {day.created} created, {day.reviewed} reviewed
+                  </title>
+                </g>
+              );
+            })
           )}
         </svg>
       </div>
