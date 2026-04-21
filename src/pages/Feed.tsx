@@ -17,7 +17,7 @@ export function Feed() {
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const org = useSettingsStore((s) => s.organization);
   const { data: allActivity, isLoading, refetch, isFetching } = useFeedActivity();
-  const [showSelf, setShowSelf] = useState(true);
+  const [showSelf, setShowSelf] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ id: string; displayName: string; uniqueName: string; imageUrl: string }[]>([]);

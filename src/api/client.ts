@@ -1,5 +1,6 @@
 import type { PagedResponse } from '../types';
 import type { AuthMode } from '../auth/useAuth';
+import { getCached, setCache } from './cache';
 
 let cachedOrg = '';
 let cachedMode: AuthMode = 'oauth';
@@ -119,6 +120,7 @@ export async function getProjectPullRequests(
     maxTime?: string;
   } = {}
 ) {
+  const CACHE_TTL = 5 * 60 * 1000;
   const params = new URLSearchParams({ 'api-version': '7.1' });
   if (options.status) params.set('searchCriteria.status', options.status);
   if (options.creatorId) params.set('searchCriteria.creatorId', options.creatorId);
@@ -128,7 +130,8 @@ export async function getProjectPullRequests(
   params.set('$top', String(options.top ?? 100));
   if (options.skip) params.set('$skip', String(options.skip));
 
-  const res = await adoFetch<PagedResponse<{
+  const cacheKey = `prs:${cachedOrg}:${projectName}:${params}`;
+  type PRResult = {
     pullRequestId: number;
     title: string;
     description?: string;
@@ -143,10 +146,16 @@ export async function getProjectPullRequests(
     targetRefName: string;
     reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string; vote: number; isRequired?: boolean; hasDeclined?: boolean }[];
     labels?: { id: string; name: string; active: boolean }[];
-  }>>(
+  };
+
+  const cached = await getCached<PRResult[]>(cacheKey, CACHE_TTL);
+  if (cached) return cached;
+
+  const res = await adoFetch<PagedResponse<PRResult>>(
     `/${encodeURIComponent(projectName)}/_apis/git/pullrequests?${params}`
   );
 
+  await setCache(cacheKey, res.value);
   return res.value;
 }
 
@@ -155,7 +164,10 @@ export async function getPullRequestThreads(
   repositoryId: string,
   pullRequestId: number
 ) {
-  const res = await adoFetch<PagedResponse<{
+  const CACHE_TTL = 30 * 60 * 1000;
+  const cacheKey = `threads:${cachedOrg}:${projectName}:${repositoryId}:${pullRequestId}`;
+
+  type ThreadResult = {
     id: number;
     publishedDate: string;
     lastUpdatedDate: string;
@@ -169,9 +181,16 @@ export async function getPullRequestThreads(
     }[];
     threadContext?: { filePath: string };
     properties?: Record<string, { $type?: string; $value: string }>;
-  }>>(
+  };
+
+  const cached = await getCached<ThreadResult[]>(cacheKey, CACHE_TTL);
+  if (cached) return cached;
+
+  const res = await adoFetch<PagedResponse<ThreadResult>>(
     `/${encodeURIComponent(projectName)}/_apis/git/repositories/${repositoryId}/pullrequests/${pullRequestId}/threads?api-version=7.1`
   );
+
+  await setCache(cacheKey, res.value);
   return res.value;
 }
 

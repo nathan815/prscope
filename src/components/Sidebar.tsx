@@ -12,9 +12,9 @@ export function Sidebar() {
   const navItems = [
     { to: '/', icon: GitPullRequest, label: 'My PRs' },
     { to: `/profile/${userId}`, icon: User, label: 'My Profile' },
-    { to: '/repos', icon: Star, label: 'Repos' },
     { to: '/people', icon: Users, label: 'People' },
     { to: '/feed', icon: Rss, label: 'Feed' },
+    { to: '/repos', icon: Star, label: 'Repos' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];
 
