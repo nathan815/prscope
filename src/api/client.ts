@@ -1,6 +1,7 @@
 import type { PagedResponse } from '../types';
 import type { AuthMode } from '../auth/useAuth';
 import { getCached, setCache } from './cache';
+import { useIdentityStore } from '../store/identities';
 
 let cachedOrg = '';
 let cachedMode: AuthMode = 'oauth';
@@ -159,6 +160,8 @@ export async function getProjectPullRequests(
   );
 
   await setCache(cacheKey, res.value);
+  collectIdentitiesFromPRs(res.value);
+
   return res.value;
 }
 
@@ -247,4 +250,12 @@ function buildAvatarUrl(subjectDescriptor: string): string {
 
 export function buildPrWebUrl(org: string, projectName: string, repoName: string, prId: number) {
   return `https://dev.azure.com/${org}/${encodeURIComponent(projectName)}/_git/${encodeURIComponent(repoName)}/pullrequest/${prId}`;
+}
+
+function collectIdentitiesFromPRs(prs: { createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string }; reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string }[] }[]) {
+  const identities = prs.flatMap((pr) => [
+    pr.createdBy,
+    ...pr.reviewers.map(({ id, displayName, uniqueName, imageUrl }) => ({ id, displayName, uniqueName, imageUrl })),
+  ]);
+  useIdentityStore.getState().upsertMany(identities);
 }

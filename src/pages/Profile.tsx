@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   GitPullRequest,
@@ -28,6 +28,7 @@ import {
 } from "date-fns";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useIdentity } from "../hooks/useIdentity";
 import { ContributionGraph } from "../components/ContributionGraph";
 import { Skeleton, SkeletonCard } from "../components/Skeleton";
 import { PRCard } from "../components/PRCard";
@@ -114,37 +115,7 @@ export function Profile() {
       reviewAnalysisLimit,
     );
 
-  const userInfoRef = useRef<{
-    userId: string;
-    displayName: string;
-    uniqueName: string;
-    imageUrl: string;
-  } | null>(null);
-  if (userInfoRef.current && userInfoRef.current.userId !== userId) {
-    userInfoRef.current = null;
-  }
-  if (prs.data) {
-    const fromCreated = prs.data.created[0]?.createdBy;
-    const fromReviewed = prs.data.reviewed[0]?.reviewers.find(
-      (r) => r.id === userId,
-    );
-    if (fromCreated && !userInfoRef.current) {
-      userInfoRef.current = {
-        userId,
-        displayName: fromCreated.displayName,
-        uniqueName: fromCreated.uniqueName,
-        imageUrl: fromCreated.imageUrl,
-      };
-    } else if (fromReviewed && !userInfoRef.current) {
-      userInfoRef.current = {
-        userId,
-        displayName: fromReviewed.displayName,
-        uniqueName: fromReviewed.uniqueName,
-        imageUrl: fromReviewed.imageUrl,
-      };
-    }
-  }
-  const userInfo = userInfoRef.current;
+  const { data: userInfo } = useIdentity(userId);
   const userName = userInfo?.displayName ?? null;
 
   usePageTitle(userName ?? "Profile");
