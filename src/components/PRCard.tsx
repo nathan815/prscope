@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ExternalLink, GitMerge, Clock, Eye, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { StatusBadge } from './StatusBadge';
 import { VoteBadge, sortReviewers } from './VoteBadge';
 import { useSettingsStore } from '../store/settings';
@@ -104,15 +105,19 @@ export function PRCard({ pr, showReviewToggle = true }: PRCardProps) {
         </div>
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-          <div className="flex items-center gap-2">
+          <Link
+            to={`/profile/${pr.createdBy.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 hover:text-ado-blue transition-colors"
+          >
             <img
               src={pr.createdBy.imageUrl}
               alt={pr.createdBy.displayName}
               className="w-5 h-5 rounded-full"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
-            <span className="text-xs text-zinc-600 dark:text-zinc-400">{pr.createdBy.displayName}</span>
-          </div>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-ado-blue">{pr.createdBy.displayName}</span>
+          </Link>
 
           <div className="flex items-center gap-1.5">
             {sortReviewers(pr.reviewers).slice(0, 5).map((r) => (
