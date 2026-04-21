@@ -606,6 +606,10 @@ export function Profile() {
         prs={prs.data}
         reviewImpact={reviewImpact.data}
         userName={userName}
+        userImageUrl={userInfo?.imageUrl ?? null}
+        userId={userId}
+        timeRange={timeRange}
+        fetchLimit={fetchLimit}
       />
 
       {/* Recent PRs */}

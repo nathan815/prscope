@@ -11,6 +11,7 @@ export interface AISummaryResult {
   generatedAt: string;
   summary: string;
   input: AISummaryInput;
+  generatedFor: { timeRange: string; fetchLimit: number };
   insights: {
     topAreas: { name: string; percentage: number }[];
     workStyle: { created: number; reviewed: number };
@@ -20,15 +21,43 @@ export interface AISummaryResult {
   };
 }
 
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const CACHE_TTL = 365 * 24 * 60 * 60 * 1000;
+const ENTRY_MAX_AGE = 2 * 24 * 60 * 60 * 1000;
 
-function cacheKey(context: UserSummaryContext): string {
-  const raw = `${context.topRepos}|${context.recentPRs}|${context.reviewPatterns}|${context.sampleComments}`;
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
-  }
-  return `ai-summary:${hash}`;
+function userCacheKey(userId: string): string {
+  return `ai-summary-history:${userId}`;
+}
+
+export interface CachedSummaryMatch {
+  result: AISummaryResult;
+  exact: boolean;
+}
+
+export async function getCachedSummary(userId: string, timeRange: string, fetchLimit: number): Promise<CachedSummaryMatch | null> {
+  const entries = await getCached<AISummaryResult[]>(userCacheKey(userId), CACHE_TTL);
+  if (!entries || entries.length === 0) return null;
+
+  const exact = entries.find(
+    (e) => e.generatedFor?.timeRange === timeRange && e.generatedFor?.fetchLimit === fetchLimit,
+  );
+  if (exact) return { result: exact, exact: true };
+
+  return { result: entries[0]!, exact: false };
+}
+
+async function saveSummary(userId: string, timeRange: string, fetchLimit: number, result: AISummaryResult): Promise<void> {
+  const entries = (await getCached<AISummaryResult[]>(userCacheKey(userId), CACHE_TTL)) ?? [];
+  const now = Date.now();
+
+  const cleaned = entries.filter((e) => {
+    const isCurrentParams = e.generatedFor?.timeRange === timeRange && e.generatedFor?.fetchLimit === fetchLimit;
+    if (isCurrentParams) return false;
+    const age = now - new Date(e.generatedAt).getTime();
+    return age < ENTRY_MAX_AGE;
+  });
+
+  const updated = [result, ...cleaned];
+  await setCache(userCacheKey(userId), updated);
 }
 
 export interface UserSummaryContext {
@@ -36,10 +65,6 @@ export interface UserSummaryContext {
   recentPRs: string;
   reviewPatterns: string;
   sampleComments: string;
-}
-
-export async function getCachedSummary(context: UserSummaryContext): Promise<AISummaryResult | null> {
-  return getCached<AISummaryResult>(cacheKey(context), CACHE_TTL);
 }
 
 function buildPrompt(context: UserSummaryContext): string {
@@ -93,9 +118,10 @@ function isWorkStyle(v: unknown): v is { created: number; reviewed: number } {
 export async function generateUserSummary(
   context: UserSummaryContext,
   inputPRs: AISummaryInput['prs'] = [],
+  cacheId: { userId: string; timeRange: string; fetchLimit: number },
 ): Promise<AISummaryResult> {
-  const cached = await getCachedSummary(context);
-  if (cached) return cached;
+  const cached = await getCachedSummary(cacheId.userId, cacheId.timeRange, cacheId.fetchLimit);
+  if (cached?.exact) return cached.result;
 
   const prompt = buildPrompt(context);
   const inputData: AISummaryInput = { prs: inputPRs, prompt };
@@ -122,6 +148,7 @@ export async function generateUserSummary(
     generatedAt: new Date().toISOString(),
     summary: obj.summary,
     input: inputData,
+    generatedFor: { timeRange: cacheId.timeRange, fetchLimit: cacheId.fetchLimit },
     insights: {
       topAreas: Array.isArray(ins.topAreas) ? ins.topAreas : [],
       workStyle: isWorkStyle(ins.workStyle) ? ins.workStyle : { created: 50, reviewed: 50 },
@@ -131,6 +158,6 @@ export async function generateUserSummary(
     },
   };
 
-  await setCache(cacheKey(context), result);
+  await saveSummary(cacheId.userId, cacheId.timeRange, cacheId.fetchLimit, result);
   return result;
 }

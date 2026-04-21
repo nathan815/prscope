@@ -18,6 +18,7 @@ export async function handleLLMChatRequest(
   };
 
   try {
+    console.log("[copilot-llm] Starting Copilot SDK client...");
     const { CopilotClient, approveAll } = await import("@github/copilot-sdk");
     const client = new CopilotClient();
     await client.start();
@@ -28,9 +29,11 @@ export async function handleLLMChatRequest(
     });
 
     const prompt = body.messages.map((m) => m.content).join("\n\n");
+    console.log("[copilot-llm] Sending prompt (%d chars)...", prompt.length);
     const result = await session.sendAndWait({ prompt });
 
     await client.stop();
+    console.log("[copilot-llm] Response received (%d chars)", result?.data?.content?.length ?? 0);
 
     res.setHeader("Content-Type", "application/json");
     res.end(
@@ -47,6 +50,7 @@ export async function handleLLMChatRequest(
       }),
     );
   } catch (err) {
+    console.error("[copilot-llm] Failed:", err);
     res.statusCode = 500;
     res.setHeader("Content-Type", "application/json");
     res.end(

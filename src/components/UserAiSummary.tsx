@@ -35,6 +35,10 @@ interface UserAiSummaryProps {
       }
     | undefined;
   userName: string | null;
+  userImageUrl: string | null;
+  userId: string;
+  timeRange: string;
+  fetchLimit: number;
 }
 
 function branchName(ref: string) {
@@ -107,8 +111,9 @@ function buildInputPRs(prs: { created: PRItem[]; reviewed: PRItem[] }): AISummar
     }));
 }
 
-export function UserAiSummary({ prs, topRepos, reviewImpact, userName }: UserAiSummaryProps) {
+export function UserAiSummary({ prs, topRepos, reviewImpact, userName, userImageUrl, userId, timeRange, fetchLimit }: UserAiSummaryProps) {
   const [result, setResult] = useState<AISummaryResult | null>(null);
+  const [isStale, setIsStale] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkedCache, setCheckedCache] = useState(false);
@@ -116,13 +121,18 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName }: UserAiS
   const canGenerate = !!prs && (prs.created.length > 0 || prs.reviewed.length > 0);
 
   useEffect(() => {
-    if (!prs || !canGenerate) return;
-    const ctx = buildContext(prs, topRepos, reviewImpact);
-    getCachedSummary(ctx).then((cached) => {
-      if (cached) setResult(cached);
+    if (!canGenerate) return;
+    setResult(null);
+    setIsStale(false);
+    setCheckedCache(false);
+    getCachedSummary(userId, timeRange, fetchLimit).then((cached) => {
+      if (cached) {
+        setResult(cached.result);
+        setIsStale(!cached.exact);
+      }
       setCheckedCache(true);
     });
-  }, [prs, topRepos, reviewImpact, canGenerate]);
+  }, [userId, timeRange, fetchLimit, canGenerate]);
 
   const handleGenerate = useCallback(async () => {
     if (!prs) return;
@@ -131,14 +141,15 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName }: UserAiS
     try {
       const ctx = buildContext(prs, topRepos, reviewImpact);
       const inputPRs = buildInputPRs(prs);
-      const r = await generateUserSummary(ctx, inputPRs);
+      const r = await generateUserSummary(ctx, inputPRs, { userId, timeRange, fetchLimit });
       setResult(r);
+      setIsStale(false);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [prs, topRepos, reviewImpact]);
+  }, [prs, topRepos, reviewImpact, userId, timeRange, fetchLimit]);
 
   const ins = result?.insights;
 
@@ -148,7 +159,12 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName }: UserAiS
         <Sparkles className="w-4 h-4" />
         AI Summary
         {userName && (
-          <span className="text-[11px] font-normal text-zinc-400">for {userName}</span>
+          <span className="text-[11px] font-normal text-zinc-400 flex items-center gap-1">
+            {userImageUrl && (
+              <img src={userImageUrl} alt="" className="w-4 h-4 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            )}
+            {userName}
+          </span>
         )}
       </h2>
 
@@ -186,6 +202,20 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName }: UserAiS
 
       {result && (
         <div>
+          {isStale && result.generatedFor && (
+            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 mb-4 text-xs">
+              <span className="text-amber-700 dark:text-amber-400">
+                Generated for previous selection ({result.generatedFor.timeRange}, limit {result.generatedFor.fetchLimit})
+              </span>
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className="text-ado-blue hover:underline font-medium ml-2"
+              >
+                Regenerate for current
+              </button>
+            </div>
+          )}
           {ins && (ins.topAreas.length > 0 || ins.strengths.length > 0) && (
             <div className="mb-5 space-y-4">
               {ins.topAreas.length > 0 && (
@@ -194,7 +224,7 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName }: UserAiS
                   <div className="space-y-1.5">
                     {ins.topAreas.map((area) => (
                       <div key={area.name} className="flex items-center gap-2 text-xs">
-                        <span className="w-36 shrink-0 text-zinc-600 dark:text-zinc-300">{area.name}</span>
+                        <span className="w-52 shrink-0 text-zinc-600 dark:text-zinc-300">{area.name}</span>
                         <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full h-4 overflow-hidden">
                           <div className="h-full bg-ado-blue/70 rounded-full transition-all" style={{ width: `${Math.min(area.percentage, 100)}%` }} />
                         </div>
