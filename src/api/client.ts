@@ -118,6 +118,7 @@ export async function getProjectPullRequests(
     skip?: number;
     minTime?: string;
     maxTime?: string;
+    skipCache?: boolean;
   } = {}
 ) {
   const CACHE_TTL = 5 * 60 * 1000;
@@ -148,8 +149,10 @@ export async function getProjectPullRequests(
     labels?: { id: string; name: string; active: boolean }[];
   };
 
-  const cached = await getCached<PRResult[]>(cacheKey, CACHE_TTL);
-  if (cached) return cached;
+  if (!options.skipCache) {
+    const cached = await getCached<PRResult[]>(cacheKey, CACHE_TTL);
+    if (cached) return cached;
+  }
 
   const res = await adoFetch<PagedResponse<PRResult>>(
     `/${encodeURIComponent(projectName)}/_apis/git/pullrequests?${params}`

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Search, Loader2, UserPlus, UserMinus } from 'lucide-react';
+import { Users, Search, Loader2, UserPlus, UserMinus, X } from 'lucide-react';
 import { searchIdentities } from '../api/client';
 import { useFollowsStore } from '../store/follows';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -46,8 +46,16 @@ export function People() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40"
+            className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40"
           />
+          {(query || results.length > 0) && (
+            <button
+              onClick={() => { setQuery(''); setResults([]); setHasSearched(false); }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <button
           onClick={handleSearch}

@@ -11,6 +11,8 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
   const organization = useSettingsStore((s) => s.organization);
   const { isAuthenticated, authMode, getToken } = useAuth();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
+  const currentUserId = useSettingsStore((s) => s.userId);
+  const isOwnProfile = userId === currentUserId;
 
   configureClient(organization, authMode, getToken);
   const isConfigured = isAuthenticated && userId.length > 0 && selectedProjects.length > 0;
@@ -21,8 +23,8 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewed] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit, minTime, maxTime }),
-            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit, minTime, maxTime }),
+            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit, minTime, maxTime, skipCache: isOwnProfile }),
+            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit, minTime, maxTime, skipCache: isOwnProfile }),
           ]);
           return { created, reviewed };
         })
@@ -200,19 +202,19 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
       const abandonedCount = prs.filter((pr) => pr.status === 'abandoned').length;
       const repoBreakdown = Array.from(repoStats.values()).sort((a, b) => b.comments - a.comments);
 
+      const voteEvents = reviewHistory.filter((e): e is Extract<typeof e, { type: 'vote' }> => e.type === 'vote');
+
       let approved = 0;
       let approvedWithSuggestions = 0;
       let waitingForAuthor = 0;
       let rejected = 0;
-      for (const pr of prs) {
-        const vote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
-        if (vote >= 10) approved++;
-        else if (vote >= 5) approvedWithSuggestions++;
-        else if (vote <= -10) rejected++;
-        else if (vote <= -5) waitingForAuthor++;
+      for (const v of voteEvents) {
+        if (v.vote >= 10) approved++;
+        else if (v.vote >= 5) approvedWithSuggestions++;
+        else if (v.vote <= -10) rejected++;
+        else if (v.vote <= -5) waitingForAuthor++;
       }
 
-      const voteEvents = reviewHistory.filter((e): e is Extract<typeof e, { type: 'vote' }> => e.type === 'vote');
       const prsWithVoteChanges = new Set<number>();
       const votesByPr = new Map<number, typeof voteEvents>();
       for (const v of voteEvents) {
@@ -222,8 +224,14 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
         if (existing.length > 1) prsWithVoteChanges.add(v.prId);
       }
 
+      const dates = prs.map((pr) => pr.creationDate).sort();
+      const analyzedFrom = dates[0] ?? '';
+      const analyzedTo = dates[dates.length - 1] ?? '';
+
       return {
         totalPrsAnalyzed: prs.length,
+        analyzedFrom,
+        analyzedTo,
         totalComments,
         prsWithComments,
         avgCommentsPerPr: prs.length > 0 ? totalComments / prs.length : 0,

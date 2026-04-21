@@ -88,8 +88,8 @@ export function useMyPullRequests(status: string = 'active', minTime?: string) {
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewing] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status, creatorId: userId, top: maxPRs, minTime }),
-            api.getProjectPullRequests(project.name, { status, reviewerId: userId, top: maxPRs, minTime }),
+            api.getProjectPullRequests(project.name, { status, creatorId: userId, top: maxPRs, minTime, skipCache: true }),
+            api.getProjectPullRequests(project.name, { status, reviewerId: userId, top: maxPRs, minTime, skipCache: true }),
           ]);
           return { created, assigned: reviewing };
         })

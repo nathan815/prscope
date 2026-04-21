@@ -8,6 +8,7 @@ import { useFeedActivity } from '../hooks/useAdo';
 import { searchIdentities, buildPrWebUrl } from '../api/client';
 import { useSettingsStore } from '../store/settings';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 export function Feed() {
   usePageTitle('Feed');
@@ -29,6 +30,8 @@ export function Feed() {
     if (showSelf) return allActivity;
     return allActivity.filter((item) => !item.isSelf);
   }, [allActivity, showSelf]);
+
+  const { visible: visibleActivity, hasMore, sentinelRef } = useInfiniteScroll(activity, 100);
 
   const handleSearch = async () => {
     if (searchQuery.trim().length < 2) return;
@@ -191,11 +194,16 @@ export function Feed() {
         </div>
       )}
 
-      {activity && activity.length > 0 && (
+      {visibleActivity && visibleActivity.length > 0 && (
         <div className="space-y-3">
-          {activity.map((item) => (
+          {visibleActivity.map((item) => (
             <ActivityCard key={item.id} item={item} org={org} />
           ))}
+          {hasMore && (
+            <div ref={sentinelRef} className="text-center py-4 text-xs text-zinc-400">
+              Loading more...
+            </div>
+          )}
         </div>
       )}
 

@@ -12,8 +12,8 @@ export function Sidebar() {
   const navItems = [
     { to: '/', icon: GitPullRequest, label: 'My PRs' },
     { to: `/profile/${userId}`, icon: User, label: 'My Profile' },
-    { to: '/people', icon: Users, label: 'People' },
     { to: '/feed', icon: Rss, label: 'Feed' },
+    { to: '/people', icon: Users, label: 'People' },
     { to: '/repos', icon: Star, label: 'Repos' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];
