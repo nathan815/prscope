@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, ArrowLeft, TrendingUp, Calendar, X } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, TrendingUp, Calendar, X } from 'lucide-react';
 import { subDays, subMonths, isAfter, format, startOfDay, endOfDay } from 'date-fns';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -10,19 +10,21 @@ import { useSettingsStore } from '../store/settings';
 import { buildPrWebUrl } from '../api/client';
 
 const PROFILE_LIMITS = [200, 500, 1000, 2000];
+const YEAR_OPTIONS = [1, 2, 3, 5];
 
 export function Profile() {
   const { userId = '' } = useParams<{ userId: string }>();
   const [fetchLimit, setFetchLimit] = useState(500);
+  const [yearsBack, setYearsBack] = useState(1);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
-  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit);
+  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit, yearsBack);
 
   const userName = prs.data?.created?.[0]?.createdBy.displayName
     ?? prs.data?.reviewed?.[0]?.reviewers.find((r) => r.id === userId)?.displayName
-    ?? userId;
+    ?? null;
 
-  usePageTitle(userName);
+  usePageTitle(userName ?? 'Profile');
 
   const stats = useMemo(() => {
     if (!prs.data) return null;
@@ -46,30 +48,50 @@ export function Profile() {
     );
   }
 
+  if (prs.isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-pulse" />
+            <div>
+              <div className="h-6 w-48 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2" />
+              <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-4 mt-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-3 h-16 animate-pulse" />
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-zinc-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading profile data...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-ado-blue mb-4">
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </Link>
-
       {/* Header */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-4">
           {prs.data?.created?.[0]?.createdBy.imageUrl ? (
             <img
               src={prs.data.created[0].createdBy.imageUrl}
-              alt={userName}
+              alt={userName ?? ''}
               className="w-16 h-16 rounded-full"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           ) : (
             <div className="w-16 h-16 rounded-full bg-ado-blue/10 flex items-center justify-center text-2xl font-bold text-ado-blue">
-              {userName.charAt(0)}
+              {(userName ?? '?').charAt(0)}
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-bold">{userName}</h1>
+            <h1 className="text-2xl font-bold">{userName ?? userId}</h1>
             {prs.data?.created?.[0]?.createdBy.uniqueName && (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">{prs.data.created[0].createdBy.uniqueName}</p>
             )}
@@ -87,26 +109,44 @@ export function Profile() {
 
         <div className="flex items-center justify-between mt-4">
           <p className="text-xs text-zinc-400">
-            Showing up to {fetchLimit.toLocaleString()} most recent PRs{prs.isLoading ? '' : ` (${stats?.totalCreated ?? 0} created, ${stats?.totalReviewed ?? 0} reviewed fetched)`}
+            Last {yearsBack} year{yearsBack > 1 ? 's' : ''}, up to {fetchLimit.toLocaleString()} PRs
             {((stats?.totalCreated ?? 0) >= fetchLimit || (stats?.totalReviewed ?? 0) >= fetchLimit) && (
-              <span className="text-amber-500 ml-1">— limit reached, increase to see more</span>
+              <span className="text-amber-500 ml-1">— limit reached</span>
             )}
           </p>
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] text-zinc-400 mr-1">Limit:</span>
-            {PROFILE_LIMITS.map((n) => (
-              <button
-                key={n}
-                onClick={() => setFetchLimit(n)}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                  fetchLimit === n
-                    ? 'bg-ado-blue text-white'
-                    : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                }`}
-              >
-                {n.toLocaleString()}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-zinc-400 mr-1">Range:</span>
+              {YEAR_OPTIONS.map((y) => (
+                <button
+                  key={y}
+                  onClick={() => setYearsBack(y)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                    yearsBack === y
+                      ? 'bg-ado-blue text-white'
+                      : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  {y}y
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] text-zinc-400 mr-1">Limit:</span>
+              {PROFILE_LIMITS.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setFetchLimit(n)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                    fetchLimit === n
+                      ? 'bg-ado-blue text-white'
+                      : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  {n.toLocaleString()}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -240,12 +280,6 @@ export function Profile() {
             <GitPullRequest className="w-4 h-4" />
             Recent PRs Created ({prs.data.created.length})
           </h2>
-          {prs.isLoading && (
-            <div className="flex items-center gap-2 text-sm text-zinc-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading...
-            </div>
-          )}
           <div className="space-y-3">
             {prs.data.created.slice(0, 20).map((pr) => (
               <PRCard key={pr.pullRequestId} pr={pr} showReviewToggle={false} />
@@ -321,31 +355,38 @@ function ActivityRange({
     ? `Activity on ${format(new Date(selectedDay + 'T00:00:00'), 'MMM d, yyyy')}`
     : `Activity in the last ${RANGE_OPTIONS.find((r) => r.value === activityRange)?.label}`;
 
-  const filteredCreated = useMemo(() => {
-    if (isDay) {
-      const dayStart = startOfDay(new Date(selectedDay + 'T00:00:00'));
-      const dayEnd = endOfDay(dayStart);
-      return created.filter((pr) => {
-        const d = new Date(pr.creationDate);
-        return isAfter(d, dayStart) && d <= dayEnd;
-      });
-    }
-    const cutoff = getRangeCutoff(activityRange);
-    return created.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
-  }, [created, selectedDay, isDay, activityRange]);
+  const mergedActivity = useMemo(() => {
+    const filterByTime = (prs: PRItem[]) => {
+      if (isDay) {
+        const dayStart = startOfDay(new Date(selectedDay + 'T00:00:00'));
+        const dayEnd = endOfDay(dayStart);
+        return prs.filter((pr) => {
+          const d = new Date(pr.creationDate);
+          return isAfter(d, dayStart) && d <= dayEnd;
+        });
+      }
+      const cutoff = getRangeCutoff(activityRange);
+      return prs.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
+    };
 
-  const filteredReviewed = useMemo(() => {
-    if (isDay) {
-      const dayStart = startOfDay(new Date(selectedDay + 'T00:00:00'));
-      const dayEnd = endOfDay(dayStart);
-      return reviewed.filter((pr) => {
-        const d = new Date(pr.creationDate);
-        return isAfter(d, dayStart) && d <= dayEnd;
-      });
-    }
-    const cutoff = getRangeCutoff(activityRange);
-    return reviewed.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
-  }, [reviewed, selectedDay, isDay, activityRange]);
+    const filteredCreated = filterByTime(created).map((pr) => ({
+      pr,
+      label: 'created' as const,
+      sortDate: pr.closedDate ?? pr.creationDate,
+    }));
+
+    const filteredReviewed = filterByTime(reviewed).map((pr) => {
+      const vote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
+      const label = vote >= 10 ? 'approved' : vote >= 5 ? 'approved w/ suggestions' : vote <= -10 ? 'rejected' : 'waiting';
+      return { pr, label, sortDate: pr.closedDate ?? pr.creationDate };
+    });
+
+    return [...filteredCreated, ...filteredReviewed]
+      .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
+  }, [created, reviewed, selectedDay, isDay, activityRange, userId]);
+
+  const createdCount = mergedActivity.filter((a) => a.label === 'created').length;
+  const reviewedCount = mergedActivity.length - createdCount;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
@@ -385,31 +426,26 @@ function ActivityRange({
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <StatCard label="PRs Created" value={filteredCreated.length} />
-        <StatCard label="PRs Reviewed" value={filteredReviewed.length} />
+        <StatCard label="PRs Created" value={createdCount} />
+        <StatCard label="PRs Reviewed" value={reviewedCount} />
       </div>
 
-      {(filteredCreated.length > 0 || filteredReviewed.length > 0) && (
-        <div className="space-y-2 max-h-80 overflow-y-auto">
-          {filteredCreated.map((pr) => (
-            <MiniPrRow key={`c-${pr.pullRequestId}`} pr={pr} label="created" userId={userId} />
+      {mergedActivity.length > 0 && (
+        <div className="space-y-1 max-h-80 overflow-y-auto">
+          {mergedActivity.map((item) => (
+            <MiniPrRow key={`${item.label}-${item.pr.pullRequestId}`} pr={item.pr} label={item.label} />
           ))}
-          {filteredReviewed.map((pr) => {
-            const vote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
-            const label = vote >= 10 ? 'approved' : vote >= 5 ? 'approved w/ suggestions' : vote <= -10 ? 'rejected' : 'waiting';
-            return <MiniPrRow key={`r-${pr.pullRequestId}`} pr={pr} label={label} userId={userId} />;
-          })}
         </div>
       )}
 
-      {filteredCreated.length === 0 && filteredReviewed.length === 0 && (
+      {mergedActivity.length === 0 && (
         <p className="text-sm text-zinc-400 text-center py-4">No activity in this period.</p>
       )}
     </div>
   );
 }
 
-function MiniPrRow({ pr, label }: { pr: PRItem; label: string; userId: string }) {
+function MiniPrRow({ pr, label }: { pr: PRItem; label: string }) {
   const org = useSettingsStore((s) => s.organization);
   const webUrl = buildPrWebUrl(org, pr.repository.project.name, pr.repository.name, pr.pullRequestId);
 
@@ -421,7 +457,7 @@ function MiniPrRow({ pr, label }: { pr: PRItem; label: string; userId: string })
       className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-sm"
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${
           label === 'created' ? 'bg-ado-blue/10 text-ado-blue'
           : label === 'approved' || label === 'approved w/ suggestions' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
           : label === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
