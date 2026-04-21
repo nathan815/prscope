@@ -5,7 +5,7 @@ import * as api from '../api/client';
 import { configureClient } from '../api/client';
 import { useAuth } from '../auth/useAuth';
 
-export function useUserProfile(userId: string) {
+export function useUserProfile(userId: string, fetchLimit: number = 200) {
   const organization = useSettingsStore((s) => s.organization);
   const { isAuthenticated, authMode, getToken } = useAuth();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
@@ -14,13 +14,13 @@ export function useUserProfile(userId: string) {
   const isConfigured = isAuthenticated && userId.length > 0 && selectedProjects.length > 0;
 
   const prsQuery = useQuery({
-    queryKey: ['profile-prs', userId, selectedProjects.map((p) => p.name)],
+    queryKey: ['profile-prs', userId, selectedProjects.map((p) => p.name), fetchLimit],
     queryFn: async () => {
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewed] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: 200 }),
-            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: 200 }),
+            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit }),
+            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit }),
           ]);
           return { created, reviewed };
         })

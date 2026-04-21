@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, ArrowLeft, TrendingUp } from 'lucide-react';
 import { useUserProfile } from '../hooks/useUserProfile';
@@ -6,9 +6,12 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { ContributionGraph } from '../components/ContributionGraph';
 import { PRCard } from '../components/PRCard';
 
+const PROFILE_LIMITS = [200, 500, 1000, 2000];
+
 export function Profile() {
   const { userId = '' } = useParams<{ userId: string }>();
-  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId);
+  const [fetchLimit, setFetchLimit] = useState(500);
+  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit);
 
   const userName = prs.data?.created?.[0]?.createdBy.displayName
     ?? prs.data?.reviewed?.[0]?.reviewers.find((r) => r.id === userId)?.displayName
@@ -76,6 +79,31 @@ export function Profile() {
             <StatCard label="Completion Rate" value={`${Math.round(stats.completionRate * 100)}%`} />
           </div>
         )}
+
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-xs text-zinc-400">
+            Showing up to {fetchLimit.toLocaleString()} most recent PRs{prs.isLoading ? '' : ` (${stats?.totalCreated ?? 0} created, ${stats?.totalReviewed ?? 0} reviewed fetched)`}
+            {((stats?.totalCreated ?? 0) >= fetchLimit || (stats?.totalReviewed ?? 0) >= fetchLimit) && (
+              <span className="text-amber-500 ml-1">— limit reached, increase to see more</span>
+            )}
+          </p>
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] text-zinc-400 mr-1">Limit:</span>
+            {PROFILE_LIMITS.map((n) => (
+              <button
+                key={n}
+                onClick={() => setFetchLimit(n)}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  fetchLimit === n
+                    ? 'bg-ado-blue text-white'
+                    : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+              >
+                {n.toLocaleString()}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Contribution Graph */}
