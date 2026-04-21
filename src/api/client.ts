@@ -116,6 +116,7 @@ export async function getProjectPullRequests(
     top?: number;
     skip?: number;
     minTime?: string;
+    maxTime?: string;
   } = {}
 ) {
   const params = new URLSearchParams({ 'api-version': '7.1' });
@@ -123,6 +124,7 @@ export async function getProjectPullRequests(
   if (options.creatorId) params.set('searchCriteria.creatorId', options.creatorId);
   if (options.reviewerId) params.set('searchCriteria.reviewerId', options.reviewerId);
   if (options.minTime) params.set('searchCriteria.minTime', options.minTime);
+  if (options.maxTime) params.set('searchCriteria.maxTime', options.maxTime);
   params.set('$top', String(options.top ?? 100));
   if (options.skip) params.set('$skip', String(options.skip));
 

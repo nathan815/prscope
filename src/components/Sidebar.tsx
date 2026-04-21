@@ -1,19 +1,21 @@
 import { NavLink } from 'react-router-dom';
-import { GitPullRequest, Star, Rss, Settings, Telescope } from 'lucide-react';
+import { GitPullRequest, Star, Rss, Settings, Telescope, User } from 'lucide-react';
 import { useSettingsStore } from '../store/settings';
 import { useFavoritesStore } from '../store/favorites';
-
-const navItems = [
-  { to: '/', icon: GitPullRequest, label: 'My PRs' },
-  { to: '/repos', icon: Star, label: 'Repos' },
-  { to: '/feed', icon: Rss, label: 'Feed' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-];
 
 export function Sidebar() {
   const displayName = useSettingsStore((s) => s.userDisplayName);
   const organization = useSettingsStore((s) => s.organization);
+  const userId = useSettingsStore((s) => s.userId);
   const favoriteCount = useFavoritesStore((s) => s.repos.length);
+
+  const navItems = [
+    { to: '/', icon: GitPullRequest, label: 'My PRs' },
+    { to: `/profile/${userId}`, icon: User, label: 'My Profile' },
+    { to: '/repos', icon: Star, label: 'Repos' },
+    { to: '/feed', icon: Rss, label: 'Feed' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
+  ];
 
   return (
     <aside className="w-56 flex-shrink-0 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">

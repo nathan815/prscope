@@ -1,28 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
-import { subYears, startOfDay } from 'date-fns';
 import { useSettingsStore } from '../store/settings';
 import { useSelectedProjectsStore } from '../store/selectedProjects';
 import * as api from '../api/client';
 import { configureClient } from '../api/client';
 import { useAuth } from '../auth/useAuth';
 
-export function useUserProfile(userId: string, fetchLimit: number = 200, yearsBack: number = 1) {
+export function useUserProfile(userId: string, fetchLimit: number = 200, minTime?: string, maxTime?: string) {
   const organization = useSettingsStore((s) => s.organization);
   const { isAuthenticated, authMode, getToken } = useAuth();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
 
   configureClient(organization, authMode, getToken);
   const isConfigured = isAuthenticated && userId.length > 0 && selectedProjects.length > 0;
-  const minTime = startOfDay(subYears(new Date(), yearsBack)).toISOString();
 
   const prsQuery = useQuery({
-    queryKey: ['profile-prs', userId, selectedProjects.map((p) => p.name), fetchLimit, yearsBack],
+    queryKey: ['profile-prs', userId, selectedProjects.map((p) => p.name), fetchLimit, minTime, maxTime],
     queryFn: async () => {
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewed] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit, minTime }),
-            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit, minTime }),
+            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit, minTime, maxTime }),
+            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit, minTime, maxTime }),
           ]);
           return { created, reviewed };
         })

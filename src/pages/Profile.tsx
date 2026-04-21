@@ -1,28 +1,88 @@
-import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useMemo, useState, useRef } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { GitPullRequest, Star, MessageSquare, CheckCircle2, XCircle, Loader2, Sparkles, TrendingUp, Calendar, X } from 'lucide-react';
-import { subDays, subMonths, isAfter, format, startOfDay, endOfDay } from 'date-fns';
+import { subDays, subMonths, subYears, isAfter, format, startOfDay, endOfDay, startOfYear, endOfYear } from 'date-fns';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { ContributionGraph } from '../components/ContributionGraph';
+import { Skeleton, SkeletonCard } from '../components/Skeleton';
 import { PRCard } from '../components/PRCard';
 import { useSettingsStore } from '../store/settings';
 import { buildPrWebUrl } from '../api/client';
 
 const PROFILE_LIMITS = [200, 500, 1000, 2000];
-const YEAR_OPTIONS = [1, 2, 3, 5];
+
+type TimeRange = 'last-1y' | 'last-6m' | 'last-1m' | string; // string for year like "2025"
+
+function getTimeRangeLabel(range: TimeRange): string {
+  if (range === 'last-1y') return 'Past year';
+  if (range === 'last-6m') return 'Past 6 months';
+  if (range === 'last-1m') return 'Past month';
+  return range;
+}
+
+function getTimeRangeBounds(range: TimeRange): { minTime: string; maxTime?: string } {
+  const now = new Date();
+  if (range === 'last-1y') return { minTime: startOfDay(subYears(now, 1)).toISOString() };
+  if (range === 'last-6m') return { minTime: startOfDay(subMonths(now, 6)).toISOString() };
+  if (range === 'last-1m') return { minTime: startOfDay(subMonths(now, 1)).toISOString() };
+  const year = parseInt(range);
+  return {
+    minTime: startOfYear(new Date(year, 0, 1)).toISOString(),
+    maxTime: endOfYear(new Date(year, 0, 1)).toISOString(),
+  };
+}
+
+function buildTimeRangeOptions(): { value: TimeRange; label: string }[] {
+  const currentYear = new Date().getFullYear();
+  const options: { value: TimeRange; label: string }[] = [
+    { value: 'last-1y', label: 'Past year' },
+    { value: 'last-6m', label: 'Past 6 months' },
+    { value: 'last-1m', label: 'Past month' },
+  ];
+  for (let y = currentYear; y >= currentYear - 4; y--) {
+    options.push({ value: String(y), label: String(y) });
+  }
+  return options;
+}
+
+const TIME_RANGE_OPTIONS = buildTimeRangeOptions();
 
 export function Profile() {
   const { userId = '' } = useParams<{ userId: string }>();
-  const [fetchLimit, setFetchLimit] = useState(500);
-  const [yearsBack, setYearsBack] = useState(1);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
-  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit, yearsBack);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const userName = prs.data?.created?.[0]?.createdBy.displayName
-    ?? prs.data?.reviewed?.[0]?.reviewers.find((r) => r.id === userId)?.displayName
-    ?? null;
+  const timeRange = (searchParams.get('range') as TimeRange) || 'last-1y';
+  const fetchLimit = Number(searchParams.get('limit')) || 500;
+  const selectedDay = searchParams.get('day') || null;
+  const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+
+  const setParam = (updates: Record<string, string | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const [k, v] of Object.entries(updates)) {
+        if (v === null) next.delete(k);
+        else next.set(k, v);
+      }
+      return next;
+    }, { replace: true });
+  };
+
+  const bounds = useMemo(() => getTimeRangeBounds(timeRange), [timeRange]);
+  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(userId, fetchLimit, bounds.minTime, bounds.maxTime);
+
+  const userInfoRef = useRef<{ displayName: string; uniqueName: string; imageUrl: string } | null>(null);
+  if (prs.data) {
+    const fromCreated = prs.data.created[0]?.createdBy;
+    const fromReviewed = prs.data.reviewed[0]?.reviewers.find((r) => r.id === userId);
+    if (fromCreated && !userInfoRef.current) {
+      userInfoRef.current = { displayName: fromCreated.displayName, uniqueName: fromCreated.uniqueName, imageUrl: fromCreated.imageUrl };
+    } else if (fromReviewed && !userInfoRef.current) {
+      userInfoRef.current = { displayName: fromReviewed.displayName, uniqueName: fromReviewed.uniqueName, imageUrl: fromReviewed.imageUrl };
+    }
+  }
+  const userInfo = userInfoRef.current;
+  const userName = userInfo?.displayName ?? null;
 
   usePageTitle(userName ?? 'Profile');
 
@@ -48,20 +108,20 @@ export function Profile() {
     );
   }
 
-  if (prs.isLoading) {
+  if (prs.isLoading && !userInfo) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-pulse" />
+            <Skeleton className="w-16 h-16 rounded-full" />
             <div>
-              <div className="h-6 w-48 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2" />
-              <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-32" />
             </div>
           </div>
           <div className="grid grid-cols-4 gap-4 mt-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-3 h-16 animate-pulse" />
+              <SkeletonCard key={i} className="p-3 h-16" />
             ))}
           </div>
         </div>
@@ -78,9 +138,9 @@ export function Profile() {
       {/* Header */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-4">
-          {prs.data?.created?.[0]?.createdBy.imageUrl ? (
+          {userInfo?.imageUrl ? (
             <img
-              src={prs.data.created[0].createdBy.imageUrl}
+              src={userInfo.imageUrl}
               alt={userName ?? ''}
               className="w-16 h-16 rounded-full"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -92,51 +152,53 @@ export function Profile() {
           )}
           <div>
             <h1 className="text-2xl font-bold">{userName ?? userId}</h1>
-            {prs.data?.created?.[0]?.createdBy.uniqueName && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{prs.data.created[0].createdBy.uniqueName}</p>
+            {userInfo?.uniqueName && (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{userInfo.uniqueName}</p>
             )}
           </div>
         </div>
 
-        {stats && (
+        {stats ? (
           <div className="grid grid-cols-4 gap-4 mt-6">
             <StatCard label="PRs Created" value={stats.totalCreated} />
             <StatCard label="PRs Reviewed" value={stats.totalReviewed} />
             <StatCard label="Active PRs" value={stats.activeOwn} />
             <StatCard label="Completion Rate" value={`${Math.round(stats.completionRate * 100)}%`} />
           </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-4 mt-6">
+            {[1, 2, 3, 4].map((i) => (
+              <SkeletonCard key={i} className="p-3 h-16" />
+            ))}
+          </div>
         )}
 
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
           <p className="text-xs text-zinc-400">
-            Last {yearsBack} year{yearsBack > 1 ? 's' : ''}, up to {fetchLimit.toLocaleString()} PRs
+            {getTimeRangeLabel(timeRange)}, up to {fetchLimit.toLocaleString()} PRs
             {((stats?.totalCreated ?? 0) >= fetchLimit || (stats?.totalReviewed ?? 0) >= fetchLimit) && (
               <span className="text-amber-500 ml-1">— limit reached</span>
             )}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1">
               <span className="text-[11px] text-zinc-400 mr-1">Range:</span>
-              {YEAR_OPTIONS.map((y) => (
-                <button
-                  key={y}
-                  onClick={() => setYearsBack(y)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                    yearsBack === y
-                      ? 'bg-ado-blue text-white'
-                      : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                  }`}
-                >
-                  {y}y
-                </button>
-              ))}
+              <select
+                value={timeRange}
+                onChange={(e) => { setParam({ range: e.target.value, day: null }); }}
+                className="text-[11px] font-medium bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ado-blue"
+              >
+                {TIME_RANGE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
             </div>
             <div className="flex items-center gap-1">
               <span className="text-[11px] text-zinc-400 mr-1">Limit:</span>
               {PROFILE_LIMITS.map((n) => (
                 <button
                   key={n}
-                  onClick={() => setFetchLimit(n)}
+                  onClick={() => setParam({ limit: String(n) })}
                   className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
                     fetchLimit === n
                       ? 'bg-ado-blue text-white'
@@ -152,35 +214,51 @@ export function Profile() {
       </div>
 
       {/* Contribution Graph */}
-      {contributionData.data && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
-          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            PR Activity
-          </h2>
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
+        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4" />
+          PR Activity
+        </h2>
+        {contributionData.data ? (
           <ContributionGraph
             data={contributionData.data}
+            startDate={new Date(bounds.minTime)}
+            endDate={bounds.maxTime ? new Date(bounds.maxTime) : undefined}
             selectedDay={selectedDay}
-            onDayClick={setSelectedDay}
+            onDayClick={(day) => setParam({ day })}
           />
-        </div>
-      )}
+        ) : (
+          <SkeletonCard className="h-28" />
+        )}
+      </div>
 
       {/* Activity in time range */}
-      {prs.data && (
+      {prs.data ? (
         <ActivityRange
           created={prs.data.created}
           reviewed={prs.data.reviewed}
           selectedDay={selectedDay}
           activityRange={activityRange}
           setActivityRange={setActivityRange}
-          onClearDay={() => setSelectedDay(null)}
+          onClearDay={() => setParam({ day: null })}
           userId={userId}
+          pageTimeRange={timeRange}
         />
+      ) : (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
+          <Skeleton className="h-5 w-40 mb-4" />
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <SkeletonCard className="p-3 h-16" />
+            <SkeletonCard className="p-3 h-16" />
+          </div>
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => <SkeletonCard key={i} className="h-8" />)}
+          </div>
+        </div>
       )}
 
       {/* Top Repos */}
-      {topRepos.data && topRepos.data.length > 0 && (
+      {topRepos.data && topRepos.data.length > 0 ? (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
           <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Star className="w-4 h-4" />
@@ -205,6 +283,13 @@ export function Profile() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
+          <Skeleton className="h-5 w-36 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} className="h-8" />)}
           </div>
         </div>
       )}
@@ -341,6 +426,7 @@ function ActivityRange({
   setActivityRange,
   onClearDay,
   userId,
+  pageTimeRange,
 }: {
   created: PRItem[];
   reviewed: PRItem[];
@@ -349,11 +435,16 @@ function ActivityRange({
   setActivityRange: (r: '7d' | '30d' | '90d' | '1y') => void;
   onClearDay: () => void;
   userId: string;
+  pageTimeRange: TimeRange;
 }) {
   const isDay = selectedDay !== null;
+  const showSubRanges = pageTimeRange === 'last-1y' || pageTimeRange === 'last-6m';
+
   const heading = isDay
     ? `Activity on ${format(new Date(selectedDay + 'T00:00:00'), 'MMM d, yyyy')}`
-    : `Activity in the last ${RANGE_OPTIONS.find((r) => r.value === activityRange)?.label}`;
+    : showSubRanges
+      ? `Activity in the past ${RANGE_OPTIONS.find((r) => r.value === activityRange)?.label}`
+      : `Activity — ${getTimeRangeLabel(pageTimeRange)}`;
 
   const mergedActivity = useMemo(() => {
     const filterByTime = (prs: PRItem[]) => {
@@ -365,14 +456,17 @@ function ActivityRange({
           return isAfter(d, dayStart) && d <= dayEnd;
         });
       }
-      const cutoff = getRangeCutoff(activityRange);
-      return prs.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
+      if (showSubRanges) {
+        const cutoff = getRangeCutoff(activityRange);
+        return prs.filter((pr) => isAfter(new Date(pr.creationDate), cutoff));
+      }
+      return prs;
     };
 
     const filteredCreated = filterByTime(created).map((pr) => ({
       pr,
       label: 'created' as const,
-      sortDate: pr.closedDate ?? pr.creationDate,
+      sortDate: pr.creationDate,
     }));
 
     const filteredReviewed = filterByTime(reviewed).map((pr) => {
@@ -383,7 +477,7 @@ function ActivityRange({
 
     return [...filteredCreated, ...filteredReviewed]
       .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
-  }, [created, reviewed, selectedDay, isDay, activityRange, userId]);
+  }, [created, reviewed, selectedDay, isDay, activityRange, showSubRanges, userId]);
 
   const createdCount = mergedActivity.filter((a) => a.label === 'created').length;
   const reviewedCount = mergedActivity.length - createdCount;
@@ -405,9 +499,11 @@ function ActivityRange({
               Clear
             </button>
           )}
-          {!isDay && (
+          {!isDay && showSubRanges && (
             <div className="flex gap-1">
-              {RANGE_OPTIONS.map((r) => (
+              {RANGE_OPTIONS
+                .filter((r) => !(pageTimeRange === 'last-6m' && r.value === '1y'))
+                .map((r) => (
                 <button
                   key={r.value}
                   onClick={() => setActivityRange(r.value)}

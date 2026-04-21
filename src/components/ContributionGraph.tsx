@@ -1,15 +1,18 @@
-import { useMemo } from 'react';
-import { subDays, format, startOfWeek, eachDayOfInterval, getDay } from 'date-fns';
+import { useMemo, useRef, useState, useEffect } from 'react';
+import { format, startOfWeek, eachDayOfInterval, getDay, subDays } from 'date-fns';
 
 interface ContributionGraphProps {
   data: Map<string, { created: number; reviewed: number }>;
+  startDate?: Date;
+  endDate?: Date;
   selectedDay?: string | null;
   onDayClick?: (day: string | null) => void;
 }
 
-const CELL_SIZE = 12;
+const LABEL_WIDTH = 30;
 const GAP = 2;
-const WEEKS = 52;
+const MIN_CELL = 10;
+const MAX_CELL = 16;
 
 function getIntensityColor(count: number, isDark: boolean): string {
   if (count === 0) return isDark ? '#27272a' : '#f4f4f5';
@@ -19,13 +22,27 @@ function getIntensityColor(count: number, isDark: boolean): string {
   return '#0078d4';
 }
 
-export function ContributionGraph({ data, selectedDay, onDayClick }: ContributionGraphProps) {
+export function ContributionGraph({ data, startDate, endDate, selectedDay, onDayClick }: ContributionGraphProps) {
   const isDark = document.documentElement.classList.contains('dark');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
-  const { grid, months, dateRange } = useMemo(() => {
-    const today = new Date();
-    const start = startOfWeek(subDays(today, WEEKS * 7), { weekStartsOn: 0 });
-    const days = eachDayOfInterval({ start, end: today });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setContainerWidth(entry.contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const { grid, months, dateRange, cellSize } = useMemo(() => {
+    const end = endDate ?? new Date();
+    const start = startDate
+      ? startOfWeek(startDate, { weekStartsOn: 0 })
+      : startOfWeek(subDays(end, 52 * 7), { weekStartsOn: 0 });
+    const days = eachDayOfInterval({ start, end });
 
     const weeks: { date: Date; key: string; count: number; created: number; reviewed: number }[][] = [];
     let currentWeek: typeof weeks[0] = [];
@@ -44,13 +61,18 @@ export function ContributionGraph({ data, selectedDay, onDayClick }: Contributio
     }
     if (currentWeek.length > 0) weeks.push(currentWeek);
 
+    const numWeeks = weeks.length;
+    const available = containerWidth > 0 ? containerWidth - LABEL_WIDTH : 800;
+    const computed = Math.floor(available / numWeeks) - GAP;
+    const clamped = Math.max(MIN_CELL, Math.min(MAX_CELL, computed));
+
     const monthLabels: { label: string; x: number }[] = [];
     let lastMonth = -1;
     for (let w = 0; w < weeks.length; w++) {
       const firstDay = weeks[w]![0]!;
       const month = firstDay.date.getMonth();
       if (month !== lastMonth) {
-        monthLabels.push({ label: format(firstDay.date, 'MMM'), x: w * (CELL_SIZE + GAP) });
+        monthLabels.push({ label: format(firstDay.date, 'MMM'), x: w * (clamped + GAP) });
         lastMonth = month;
       }
     }
@@ -58,9 +80,10 @@ export function ContributionGraph({ data, selectedDay, onDayClick }: Contributio
     return {
       grid: weeks,
       months: monthLabels,
-      dateRange: `${format(start, 'MMM d, yyyy')} — ${format(today, 'MMM d, yyyy')}`,
+      dateRange: `${format(start, 'MMM d, yyyy')} — ${format(end, 'MMM d, yyyy')}`,
+      cellSize: clamped,
     };
-  }, [data]);
+  }, [data, startDate, endDate, containerWidth]);
 
   const totalCreated = useMemo(() => {
     let sum = 0;
@@ -74,8 +97,11 @@ export function ContributionGraph({ data, selectedDay, onDayClick }: Contributio
     return sum;
   }, [data]);
 
+  const svgWidth = grid.length * (cellSize + GAP) + LABEL_WIDTH;
+  const svgHeight = 7 * (cellSize + GAP) + 20;
+
   return (
-    <div>
+    <div ref={containerRef}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
           <span><strong className="text-zinc-700 dark:text-zinc-200">{totalCreated}</strong> PRs created</span>
@@ -83,16 +109,16 @@ export function ContributionGraph({ data, selectedDay, onDayClick }: Contributio
         </div>
         <span className="text-[11px] text-zinc-400">{dateRange}</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex justify-center">
         <svg
-          width={grid.length * (CELL_SIZE + GAP) + 30}
-          height={7 * (CELL_SIZE + GAP) + 20}
+          width={svgWidth}
+          height={svgHeight}
           className="cursor-pointer"
         >
           {months.map((m, i) => (
             <text
               key={i}
-              x={m.x + 30}
+              x={m.x + LABEL_WIDTH}
               y={10}
               fill="currentColor"
               className="text-zinc-400 dark:text-zinc-500"
@@ -105,7 +131,7 @@ export function ContributionGraph({ data, selectedDay, onDayClick }: Contributio
             <text
               key={i}
               x={0}
-              y={18 + i * (CELL_SIZE + GAP) + CELL_SIZE / 2}
+              y={18 + i * (cellSize + GAP) + cellSize / 2}
               fill="currentColor"
               className="text-zinc-400 dark:text-zinc-500"
               fontSize={9}
@@ -120,10 +146,10 @@ export function ContributionGraph({ data, selectedDay, onDayClick }: Contributio
               return (
                 <g key={`${w}-${d}`} onClick={() => onDayClick?.(isSelected ? null : day.key)}>
                   <rect
-                    x={w * (CELL_SIZE + GAP) + 30}
-                    y={d * (CELL_SIZE + GAP) + 16}
-                    width={CELL_SIZE}
-                    height={CELL_SIZE}
+                    x={w * (cellSize + GAP) + LABEL_WIDTH}
+                    y={d * (cellSize + GAP) + 16}
+                    width={cellSize}
+                    height={cellSize}
                     rx={2}
                     fill={getIntensityColor(day.count, isDark)}
                     stroke={isSelected ? '#0078d4' : 'none'}
