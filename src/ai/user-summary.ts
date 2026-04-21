@@ -61,6 +61,7 @@ async function saveSummary(userId: string, timeRange: string, fetchLimit: number
 }
 
 export interface UserSummaryContext {
+  userName: string;
   topRepos: string;
   recentPRs: string;
   reviewPatterns: string;
@@ -70,11 +71,14 @@ export interface UserSummaryContext {
 function buildPrompt(context: UserSummaryContext): string {
   return `You are analyzing a software engineer's Azure DevOps activity. Based on the data below, provide TWO things:
 
-1. A concise written summary (3-5 paragraphs) covering what they work on, their contribution patterns, review style, and any specializations.
+1. A concise written summary (3-5 paragraphs) covering what they work on, their contribution patterns (compare created vs reviewed counts accurately — if reviewed > created, they skew toward reviewing, not authoring), review style, and any specializations.
 
 2. Structured insights as JSON.
 
 ## Data
+
+### Engineer
+${context.userName}
 
 ### Top Repositories
 ${context.topRepos}
@@ -108,7 +112,7 @@ For reviewThoroughness: score 1-5 based on comment volume and detail (1=rubber s
 For strengths: 3-5 short phrases describing their engineering strengths.
 For keyCollaborators: names of people they frequently work with (from PR authors they review or reviewers on their PRs). Empty array if not enough data.
 
-Write in third person. Be specific and factual.`;
+Write in third person using gender-neutral pronouns (they/their). Be specific and factual. Describe what they work on and their patterns — do not editorialize or use subjective adjectives (e.g. avoid "prolific", "talented", "impressive", "excellent"). When describing review style, back up characterizations with evidence from the data (e.g. "their reviews average N comments and frequently address error handling, test coverage, and architecture" rather than just "thorough reviewer"). Replace narrative verbs like "driven" or "led" with specific actions: "authored", "reviewed", "modified". Let the data speak for itself.`;
 }
 
 function isWorkStyle(v: unknown): v is { created: number; reviewed: number } {
@@ -119,9 +123,12 @@ export async function generateUserSummary(
   context: UserSummaryContext,
   inputPRs: AISummaryInput['prs'] = [],
   cacheId: { userId: string; timeRange: string; fetchLimit: number },
+  skipCache = false,
 ): Promise<AISummaryResult> {
-  const cached = await getCachedSummary(cacheId.userId, cacheId.timeRange, cacheId.fetchLimit);
-  if (cached?.exact) return cached.result;
+  if (!skipCache) {
+    const cached = await getCachedSummary(cacheId.userId, cacheId.timeRange, cacheId.fetchLimit);
+    if (cached?.exact) return cached.result;
+  }
 
   const prompt = buildPrompt(context);
   const inputData: AISummaryInput = { prs: inputPRs, prompt };
