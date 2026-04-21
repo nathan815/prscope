@@ -103,7 +103,7 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
     queryKey: ['profile-review-impact', userId, reviewedForImpact.map((p) => p.pullRequestId)],
     queryFn: async () => {
       if (reviewedForImpact.length === 0) {
-        return { totalPrsAnalyzed: 0, totalComments: 0, prsWithComments: 0, avgCommentsPerPr: 0, completedCount: 0, abandonedCount: 0, completionRate: 0, threadStatuses: {} as Record<string, number>, commentTexts: [] as string[] };
+        return { totalPrsAnalyzed: 0, totalComments: 0, prsWithComments: 0, avgCommentsPerPr: 0, completedCount: 0, abandonedCount: 0, completionRate: 0, threadStatuses: {} as Record<string, number>, commentTexts: [] as { content: string; filePath: string | null }[] };
       }
       const prs = reviewedForImpact;
       const threads = await Promise.all(
@@ -123,7 +123,7 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
 
       let totalComments = 0;
       let prsWithComments = 0;
-      const commentTexts: string[] = [];
+      const commentTexts: { content: string; filePath: string | null }[] = [];
       const threadStatuses = new Map<string, number>();
       const repoStats = new Map<string, { name: string; project: string; prsReviewed: number; comments: number }>();
 
@@ -167,7 +167,7 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
               totalComments++;
               repo.comments++;
               if (commentTexts.length < 50) {
-                commentTexts.push(comment.content.slice(0, 200));
+                commentTexts.push({ content: comment.content.slice(0, 200), filePath: thread.threadContext?.filePath ?? null });
               }
               const day = format(new Date(comment.publishedDate), 'yyyy-MM-dd');
               const groupKey = `${pr.pullRequestId}-${day}`;

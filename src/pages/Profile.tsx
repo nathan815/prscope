@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Sparkles,
   TrendingUp,
   Calendar,
   X,
@@ -35,6 +34,7 @@ import { PRCard } from "../components/PRCard";
 import { useFollowsStore } from "../store/follows";
 import { useSettingsStore } from "../store/settings";
 import { buildPrWebUrl } from "../api/client";
+import { UserAiSummary } from "../components/UserAiSummary";
 
 const PROFILE_LIMITS = [200, 500, 1000, 2000];
 
@@ -600,24 +600,13 @@ export function Profile() {
           )}
       </div>
 
-      {/* AI Summary placeholder */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <Sparkles className="w-4 h-4" />
-          AI Summary
-        </h2>
-        <button
-          disabled
-          className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-4 py-2 rounded-lg text-sm cursor-not-allowed"
-        >
-          <Sparkles className="w-4 h-4" />
-          Generate Summary (coming soon)
-        </button>
-        <p className="text-xs text-zinc-400 mt-2">
-          Will use Copilot to summarize what this person works on and their
-          review patterns.
-        </p>
-      </div>
+      {/* AI Summary */}
+      <UserAiSummary
+        topRepos={topRepos.data}
+        prs={prs.data}
+        reviewImpact={reviewImpact.data}
+        userName={userName}
+      />
 
       {/* Recent PRs */}
       {prs.data && (
