@@ -16,7 +16,7 @@ export function Feed() {
   const addUser = useFollowsStore((s) => s.addUser);
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const org = useSettingsStore((s) => s.organization);
-  const { data: allActivity, isLoading, refetch, isFetching } = useFeedActivity();
+  const { data: allActivity, isLoading, forceRefresh, isFetching } = useFeedActivity();
   const [showSelf, setShowSelf] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,7 +83,7 @@ export function Feed() {
             Follow People
           </button>
           <button
-            onClick={() => refetch()}
+            onClick={() => forceRefresh()}
             disabled={isFetching}
             className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-ado-blue transition-colors disabled:opacity-50"
           >
