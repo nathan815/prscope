@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export function useInfiniteScroll<T>(items: T[] | undefined, pageSize: number = 100) {
   const [visibleCount, setVisibleCount] = useState(pageSize);
@@ -17,9 +17,12 @@ export function useInfiniteScroll<T>(items: T[] | undefined, pageSize: number = 
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) loadMore();
-    }, { rootMargin: '200px' });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) loadMore();
+      },
+      { rootMargin: "200px" },
+    );
     observer.observe(el);
     return () => observer.disconnect();
   }, [loadMore]);

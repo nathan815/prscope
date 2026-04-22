@@ -1,13 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
-import { useRef } from 'react';
-import { useSettingsStore } from '../store/settings';
-import { useFollowsStore } from '../store/follows';
-import * as api from '../api/client';
-import { configureClient } from '../api/client';
-import { useAuth } from '../auth/useAuth';
-import { useSelectedProjectsStore } from '../store/selectedProjects';
-import { getFeedCache, setFeedCache, type CachedFeedItem } from '../api/feedCache';
-import type { FavoriteRepo } from '../types';
+import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
+import { useSettingsStore } from "../store/settings";
+import { useFollowsStore } from "../store/follows";
+import * as api from "../api/client";
+import { configureClient } from "../api/client";
+import { useAuth } from "../auth/useAuth";
+import { useSelectedProjectsStore } from "../store/selectedProjects";
+import { getFeedCache, setFeedCache, type CachedFeedItem } from "../api/feedCache";
+import type { FavoriteRepo } from "../types";
 
 function useConfiguredClient() {
   const organization = useSettingsStore((s) => s.organization);
@@ -19,7 +19,7 @@ function useConfiguredClient() {
 export function useConnectionData() {
   const { isConfigured } = useConfiguredClient();
   return useQuery({
-    queryKey: ['connectionData'],
+    queryKey: ["connectionData"],
     queryFn: api.getConnectionData,
     enabled: isConfigured,
     staleTime: 1000 * 60 * 30,
@@ -29,7 +29,7 @@ export function useConnectionData() {
 export function useProjects() {
   const { isConfigured } = useConfiguredClient();
   return useQuery({
-    queryKey: ['projects'],
+    queryKey: ["projects"],
     queryFn: api.getProjects,
     enabled: isConfigured,
     staleTime: 1000 * 60 * 10,
@@ -39,7 +39,7 @@ export function useProjects() {
 export function useRepositories(projectName: string) {
   const { isConfigured } = useConfiguredClient();
   return useQuery({
-    queryKey: ['repositories', projectName],
+    queryKey: ["repositories", projectName],
     queryFn: () => api.getRepositories(projectName),
     enabled: isConfigured && projectName.length > 0,
     staleTime: 1000 * 60 * 5,
@@ -49,11 +49,9 @@ export function useRepositories(projectName: string) {
 export function useMultiProjectRepositories(projectNames: string[]) {
   const { isConfigured } = useConfiguredClient();
   return useQuery({
-    queryKey: ['repositories', ...projectNames],
+    queryKey: ["repositories", ...projectNames],
     queryFn: async () => {
-      const results = await Promise.all(
-        projectNames.map((name) => api.getRepositories(name))
-      );
+      const results = await Promise.all(projectNames.map((name) => api.getRepositories(name)));
       return results.flat().sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: isConfigured && projectNames.length > 0,
@@ -63,36 +61,54 @@ export function useMultiProjectRepositories(projectNames: string[]) {
 
 export function usePullRequests(
   favoriteRepo: FavoriteRepo,
-  options: { status?: string; creatorId?: string; reviewerId?: string } = {}
+  options: { status?: string; creatorId?: string; reviewerId?: string } = {},
 ) {
   const { isConfigured } = useConfiguredClient();
   return useQuery({
-    queryKey: ['pullRequests', favoriteRepo.repoId, options],
-    queryFn: () =>
-      api.getPullRequests(favoriteRepo.projectName, favoriteRepo.repoId, options),
+    queryKey: ["pullRequests", favoriteRepo.repoId, options],
+    queryFn: () => api.getPullRequests(favoriteRepo.projectName, favoriteRepo.repoId, options),
     enabled: isConfigured,
     staleTime: 1000 * 60 * 2,
   });
 }
 
-export function useMyPullRequests(status: string = 'active', minTime?: string) {
+export function useMyPullRequests(status: string = "active", minTime?: string) {
   const { isConfigured, userId } = useConfiguredClient();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const maxPRs = useSettingsStore((s) => s.maxPRs);
 
   const queries = useQuery({
-    queryKey: ['myPullRequests', status, userId, selectedProjects.map((p) => p.name), maxPRs, minTime],
+    queryKey: [
+      "myPullRequests",
+      status,
+      userId,
+      selectedProjects.map((p) => p.name),
+      maxPRs,
+      minTime,
+    ],
     queryFn: async () => {
       if (!userId || selectedProjects.length === 0) return { created: [], reviewing: [] };
 
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewing] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status, creatorId: userId, top: maxPRs, minTime, skipCache: true }),
-            api.getProjectPullRequests(project.name, { status, reviewerId: userId, top: maxPRs, minTime, skipCache: true }),
+            api.getProjectPullRequests(project.name, {
+              status,
+              creatorId: userId,
+              top: maxPRs,
+              minTime,
+              skipCache: true,
+            }),
+            api.getProjectPullRequests(project.name, {
+              status,
+              reviewerId: userId,
+              top: maxPRs,
+              minTime,
+              skipCache: true,
+            }),
           ]);
           return { created, assigned: reviewing };
-        })
+        }),
       );
 
       const created = results.flatMap((r) => r.created);
@@ -100,7 +116,10 @@ export function useMyPullRequests(status: string = 'active', minTime?: string) {
       const createdIds = new Set(created.map((pr) => pr.pullRequestId));
       const assignedOnly = assigned.filter((pr) => !createdIds.has(pr.pullRequestId));
 
-      const sortByLatest = (a: { closedDate?: string; creationDate: string }, b: { closedDate?: string; creationDate: string }) => {
+      const sortByLatest = (
+        a: { closedDate?: string; creationDate: string },
+        b: { closedDate?: string; creationDate: string },
+      ) => {
         const aTime = new Date(a.closedDate ?? a.creationDate).getTime();
         const bTime = new Date(b.closedDate ?? b.creationDate).getTime();
         return bTime - aTime;
@@ -129,22 +148,28 @@ export function useFeedActivity() {
   const projectNames = selectedProjects.map((p) => p.name);
 
   const query = useQuery({
-    queryKey: ['feedActivity', userId, followIds, projectNames],
+    queryKey: ["feedActivity", userId, followIds, projectNames],
     queryFn: async () => {
       if (selectedProjects.length === 0) return [];
 
       const allUsers = [
-        ...(userId ? [{ id: userId, displayName: userName, uniqueName: '', imageUrl: '', isSelf: true }] : []),
+        ...(userId
+          ? [{ id: userId, displayName: userName, uniqueName: "", imageUrl: "", isSelf: true }]
+          : []),
         ...follows.map((u) => ({ ...u, isSelf: false })),
       ];
 
-      const cached = forceFullRef.current ? null : await getFeedCache(userId ?? '', followIds, projectNames);
+      const cached = forceFullRef.current
+        ? null
+        : await getFeedCache(userId ?? "", followIds, projectNames);
       forceFullRef.current = false;
 
       let minTime: string | undefined;
       if (cached && cached.length > 0) {
-        const newest = cached.reduce((latest, item) =>
-          item.timestamp > latest ? item.timestamp : latest, cached[0]!.timestamp);
+        const newest = cached.reduce(
+          (latest, item) => (item.timestamp > latest ? item.timestamp : latest),
+          cached[0]!.timestamp,
+        );
         const cutoff = new Date(newest);
         cutoff.setDate(cutoff.getDate() - 1);
         cutoff.setHours(0, 0, 0, 0);
@@ -159,45 +184,46 @@ export function useFeedActivity() {
             selectedProjects.map(async (project) => {
               const queries: Promise<Awaited<ReturnType<typeof api.getProjectPullRequests>>>[] = [
                 api.getProjectPullRequests(project.name, {
-                  status: 'active',
+                  status: "active",
                   creatorId: user.id,
                   top: minTime ? 15 : 30,
                   minTime,
                 }),
                 api.getProjectPullRequests(project.name, {
-                  status: 'completed',
+                  status: "completed",
                   creatorId: user.id,
                   top: minTime ? 15 : 30,
                   minTime,
                 }),
                 api.getProjectPullRequests(project.name, {
-                  status: 'all',
+                  status: "all",
                   reviewerId: user.id,
                   top: minTime ? 25 : 50,
                   minTime,
                 }),
               ];
-              const [createdActive = [], createdCompleted = [], reviewing = []] = await Promise.all(queries);
+              const [createdActive = [], createdCompleted = [], reviewing = []] =
+                await Promise.all(queries);
               const created = [...createdActive, ...createdCompleted];
 
               for (const pr of created) {
                 freshItems.push({
                   id: `${user.id}-created-${pr.pullRequestId}`,
-                  type: 'pr_created',
+                  type: "pr_created",
                   user: pr.createdBy,
                   pullRequest: pr,
                   timestamp: pr.creationDate,
-                  timestampLabel: 'created',
+                  timestampLabel: "created",
                   isSelf: user.isSelf,
                 });
-                if (pr.status === 'completed' && pr.closedDate) {
+                if (pr.status === "completed" && pr.closedDate) {
                   freshItems.push({
                     id: `${user.id}-completed-${pr.pullRequestId}`,
-                    type: 'pr_completed',
+                    type: "pr_completed",
                     user: pr.createdBy,
                     pullRequest: pr,
                     timestamp: pr.closedDate,
-                    timestampLabel: 'completed',
+                    timestampLabel: "completed",
                     isSelf: user.isSelf,
                   });
                 }
@@ -207,23 +233,34 @@ export function useFeedActivity() {
                 if (pr.createdBy.id === user.id) continue;
                 const review = pr.reviewers.find((r) => r.id === user.id);
                 if (!review || review.vote === 0) continue;
-                const type = review.vote >= 10 ? 'pr_approved' as const
-                  : review.vote >= 5 ? 'pr_approved_suggestions' as const
-                  : review.vote <= -10 ? 'pr_rejected' as const
-                  : 'pr_waiting' as const;
+                const type =
+                  review.vote >= 10
+                    ? ("pr_approved" as const)
+                    : review.vote >= 5
+                      ? ("pr_approved_suggestions" as const)
+                      : review.vote <= -10
+                        ? ("pr_rejected" as const)
+                        : ("pr_waiting" as const);
                 freshItems.push({
                   id: `${user.id}-review-${pr.pullRequestId}`,
                   type,
-                  user: user.isSelf ? pr.reviewers.find((r) => r.id === user.id)! : { id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl },
+                  user: user.isSelf
+                    ? pr.reviewers.find((r) => r.id === user.id)!
+                    : {
+                        id: user.id,
+                        displayName: user.displayName,
+                        uniqueName: user.uniqueName,
+                        imageUrl: user.imageUrl,
+                      },
                   pullRequest: pr,
                   timestamp: pr.closedDate ?? pr.creationDate,
-                  timestampLabel: pr.closedDate ? 'completed' : 'created',
+                  timestampLabel: pr.closedDate ? "completed" : "created",
                   isSelf: user.isSelf,
                 });
               }
-            })
+            }),
           );
-        })
+        }),
       );
 
       const freshById = new Map(freshItems.map((item) => [item.id, item]));
@@ -254,7 +291,7 @@ export function useFeedActivity() {
         return (typePriority[a.type] ?? 1) - (typePriority[b.type] ?? 1);
       });
 
-      await setFeedCache(userId ?? '', followIds, projectNames, merged);
+      await setFeedCache(userId ?? "", followIds, projectNames, merged);
       return merged;
     },
     enabled: isConfigured && selectedProjects.length > 0,

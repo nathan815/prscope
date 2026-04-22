@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Users, Search, Loader2, UserPlus, UserMinus, X } from 'lucide-react';
-import { searchIdentities } from '../api/client';
-import { useFollowsStore } from '../store/follows';
-import { usePageTitle } from '../hooks/usePageTitle';
-import { Avatar } from '../components/Avatar';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Users, Search, Loader2, UserPlus, UserMinus, X } from "lucide-react";
+import { searchIdentities } from "../api/client";
+import { useFollowsStore } from "../store/follows";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { Avatar } from "../components/Avatar";
 
 export function People() {
-  usePageTitle('People');
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ id: string; displayName: string; uniqueName: string; imageUrl: string }[]>([]);
+  usePageTitle("People");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<
+    { id: string; displayName: string; uniqueName: string; imageUrl: string }[]
+  >([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -46,12 +48,16 @@ export function People() {
             placeholder="Search by name or alias..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40"
           />
           {(query || results.length > 0) && (
             <button
-              onClick={() => { setQuery(''); setResults([]); setHasSearched(false); }}
+              onClick={() => {
+                setQuery("");
+                setResults([]);
+                setHasSearched(false);
+              }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
             >
               <X className="w-4 h-4" />
@@ -63,7 +69,7 @@ export function People() {
           disabled={searching || query.trim().length < 2}
           className="px-4 py-2.5 bg-ado-blue text-white rounded-lg text-sm font-medium hover:bg-ado-blue-dark transition-colors disabled:opacity-50"
         >
-          {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+          {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
         </button>
       </div>
 
@@ -74,7 +80,12 @@ export function People() {
           </h2>
           <div className="space-y-1">
             {results.map((user) => (
-              <PersonRow key={user.id} user={user} isFollowing={isFollowing(user.id)} onToggleFollow={() => toggleUser(user)} />
+              <PersonRow
+                key={user.id}
+                user={user}
+                isFollowing={isFollowing(user.id)}
+                onToggleFollow={() => toggleUser(user)}
+              />
             ))}
           </div>
         </section>
@@ -91,7 +102,12 @@ export function People() {
           </h2>
           <div className="space-y-1">
             {follows.map((user) => (
-              <PersonRow key={user.id} user={user} isFollowing={true} onToggleFollow={() => toggleUser(user)} />
+              <PersonRow
+                key={user.id}
+                user={user}
+                isFollowing={true}
+                onToggleFollow={() => toggleUser(user)}
+              />
             ))}
           </div>
         </section>
@@ -100,16 +116,23 @@ export function People() {
   );
 }
 
-function PersonRow({ user, isFollowing, onToggleFollow }: {
+function PersonRow({
+  user,
+  isFollowing,
+  onToggleFollow,
+}: {
   user: { id: string; displayName: string; uniqueName: string; imageUrl: string };
   isFollowing: boolean;
   onToggleFollow: () => void;
 }) {
-  const alias = user.uniqueName?.replace(/@.*$/, '') ?? '';
+  const alias = user.uniqueName?.replace(/@.*$/, "") ?? "";
 
   return (
     <div className="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors">
-      <Link to={`/profile/${user.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:text-ado-blue transition-colors">
+      <Link
+        to={`/profile/${user.id}`}
+        className="flex items-center gap-3 min-w-0 flex-1 hover:text-ado-blue transition-colors"
+      >
         <Avatar name={user.displayName} imageUrl={user.imageUrl} size={8} />
         <div className="min-w-0">
           <span className="text-sm font-medium block truncate">{user.displayName}</span>
@@ -120,11 +143,19 @@ function PersonRow({ user, isFollowing, onToggleFollow }: {
         onClick={onToggleFollow}
         className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 ${
           isFollowing
-            ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-red-500'
-            : 'bg-ado-blue text-white hover:bg-ado-blue-dark'
+            ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-red-500"
+            : "bg-ado-blue text-white hover:bg-ado-blue-dark"
         }`}
       >
-        {isFollowing ? <><UserMinus className="w-3 h-3" /> Unfollow</> : <><UserPlus className="w-3 h-3" /> Follow</>}
+        {isFollowing ? (
+          <>
+            <UserMinus className="w-3 h-3" /> Unfollow
+          </>
+        ) : (
+          <>
+            <UserPlus className="w-3 h-3" /> Follow
+          </>
+        )}
       </button>
     </div>
   );

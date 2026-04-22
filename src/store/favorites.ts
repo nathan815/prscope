@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { FavoriteRepo } from '../types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { FavoriteRepo } from "../types";
 
 interface FavoritesState {
   repos: FavoriteRepo[];
@@ -18,8 +18,7 @@ export const useFavoritesStore = create<FavoritesState>()(
         set((s) => ({
           repos: s.repos.some((r) => r.repoId === repo.repoId) ? s.repos : [...s.repos, repo],
         })),
-      removeRepo: (repoId) =>
-        set((s) => ({ repos: s.repos.filter((r) => r.repoId !== repoId) })),
+      removeRepo: (repoId) => set((s) => ({ repos: s.repos.filter((r) => r.repoId !== repoId) })),
       isFavorite: (repoId) => get().repos.some((r) => r.repoId === repoId),
       toggleRepo: (repo) => {
         if (get().isFavorite(repo.repoId)) {
@@ -29,6 +28,6 @@ export const useFavoritesStore = create<FavoritesState>()(
         }
       },
     }),
-    { name: 'prscope-favorites' }
-  )
+    { name: "prscope-favorites" },
+  ),
 );

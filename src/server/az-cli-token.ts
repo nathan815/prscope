@@ -5,10 +5,7 @@ const ADO_RESOURCE = "499b84ac-1321-427f-aa17-267ca6975798";
 
 let cachedToken: { token: string; expiresOn: number } | null = null;
 
-export function handleAzCliTokenRequest(
-  _req: unknown,
-  res: ServerResponse,
-): void {
+export function handleAzCliTokenRequest(_req: unknown, res: ServerResponse): void {
   const now = Date.now();
   if (cachedToken && cachedToken.expiresOn > now + 60_000) {
     res.setHeader("Content-Type", "application/json");
@@ -18,10 +15,10 @@ export function handleAzCliTokenRequest(
 
   console.log("[az-cli-token] Fetching new token from az cli...");
   try {
-    const raw = execSync(
-      `az account get-access-token --resource ${ADO_RESOURCE} -o json`,
-      { encoding: "utf-8", timeout: 15_000 },
-    );
+    const raw = execSync(`az account get-access-token --resource ${ADO_RESOURCE} -o json`, {
+      encoding: "utf-8",
+      timeout: 15_000,
+    });
     const parsed = JSON.parse(raw) as {
       accessToken: string;
       expiresOn: string;

@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface SelectedProject {
   id: string;
@@ -20,7 +20,9 @@ export const useSelectedProjectsStore = create<SelectedProjectsState>()(
       projects: [],
       addProject: (project) =>
         set((s) => ({
-          projects: s.projects.some((p) => p.id === project.id) ? s.projects : [...s.projects, project],
+          projects: s.projects.some((p) => p.id === project.id)
+            ? s.projects
+            : [...s.projects, project],
         })),
       removeProject: (projectId) =>
         set((s) => ({ projects: s.projects.filter((p) => p.id !== projectId) })),
@@ -33,6 +35,6 @@ export const useSelectedProjectsStore = create<SelectedProjectsState>()(
         }
       },
     }),
-    { name: 'prscope-selected-projects' }
-  )
+    { name: "prscope-selected-projects" },
+  ),
 );

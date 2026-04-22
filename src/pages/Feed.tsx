@@ -1,18 +1,31 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Rss, Search, UserPlus, X, RefreshCw, Loader2, GitPullRequest, CheckCircle2, Eye, ThumbsDown, Clock, EyeOff } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { useFollowsStore } from '../store/follows';
-import { useSelectedProjectsStore } from '../store/selectedProjects';
-import { useFeedActivity } from '../hooks/useAdo';
-import { searchIdentities, buildPrWebUrl } from '../api/client';
-import { useSettingsStore } from '../store/settings';
-import { usePageTitle } from '../hooks/usePageTitle';
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-import { Avatar } from '../components/Avatar';
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import {
+  Rss,
+  Search,
+  UserPlus,
+  X,
+  RefreshCw,
+  Loader2,
+  GitPullRequest,
+  CheckCircle2,
+  Eye,
+  ThumbsDown,
+  Clock,
+  EyeOff,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { useFollowsStore } from "../store/follows";
+import { useSelectedProjectsStore } from "../store/selectedProjects";
+import { useFeedActivity } from "../hooks/useAdo";
+import { searchIdentities, buildPrWebUrl } from "../api/client";
+import { useSettingsStore } from "../store/settings";
+import { usePageTitle } from "../hooks/usePageTitle";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { Avatar } from "../components/Avatar";
 
 export function Feed() {
-  usePageTitle('Feed');
+  usePageTitle("Feed");
   const follows = useFollowsStore((s) => s.users);
   const removeUser = useFollowsStore((s) => s.removeUser);
   const addUser = useFollowsStore((s) => s.addUser);
@@ -21,8 +34,10 @@ export function Feed() {
   const { data: allActivity, isLoading, forceRefresh, isFetching } = useFeedActivity();
   const [showSelf, setShowSelf] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ id: string; displayName: string; uniqueName: string; imageUrl: string }[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    { id: string; displayName: string; uniqueName: string; imageUrl: string }[]
+  >([]);
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -53,7 +68,8 @@ export function Feed() {
         <Rss className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
         <h2 className="text-lg font-semibold mb-2">Select projects first</h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
-          The feed shows activity from followed people across your selected projects. Select projects in the Repos tab first.
+          The feed shows activity from followed people across your selected projects. Select
+          projects in the Repos tab first.
         </p>
       </div>
     );
@@ -71,10 +87,10 @@ export function Feed() {
             onClick={() => setShowSelf(!showSelf)}
             className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
               showSelf
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400"
             }`}
-            title={showSelf ? 'Hide my activity' : 'Show my activity'}
+            title={showSelf ? "Hide my activity" : "Show my activity"}
           >
             {showSelf ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             My activity
@@ -91,7 +107,7 @@ export function Feed() {
             disabled={isFetching}
             className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-ado-blue transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
@@ -106,7 +122,7 @@ export function Feed() {
                 placeholder="Search by name or alias (e.g. jsmith)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40"
               />
             </div>
@@ -115,7 +131,7 @@ export function Feed() {
               disabled={searching}
               className="px-4 py-2 bg-ado-blue text-white rounded-lg text-sm hover:bg-ado-blue-dark transition-colors disabled:opacity-50"
             >
-              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
             </button>
           </div>
 
@@ -123,9 +139,12 @@ export function Feed() {
             <div className="space-y-1">
               {searchResults.map((user) => {
                 const isFollowing = follows.some((f) => f.id === user.id);
-                const alias = user.uniqueName?.replace(/@.*$/, '') ?? '';
+                const alias = user.uniqueName?.replace(/@.*$/, "") ?? "";
                 return (
-                  <div key={user.id} className="flex items-center justify-between px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg">
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg"
+                  >
                     <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={user.displayName} imageUrl={user.imageUrl} size={6} />
                       <span className="text-sm font-medium truncate">{user.displayName}</span>
@@ -136,16 +155,21 @@ export function Feed() {
                         if (isFollowing) {
                           removeUser(user.id);
                         } else {
-                          addUser({ id: user.id, displayName: user.displayName, uniqueName: user.uniqueName, imageUrl: user.imageUrl });
+                          addUser({
+                            id: user.id,
+                            displayName: user.displayName,
+                            uniqueName: user.uniqueName,
+                            imageUrl: user.imageUrl,
+                          });
                         }
                       }}
                       className={`text-xs px-2 py-1 rounded-md transition-colors ${
                         isFollowing
-                          ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
-                          : 'bg-ado-blue text-white hover:bg-ado-blue-dark'
+                          ? "bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400"
+                          : "bg-ado-blue text-white hover:bg-ado-blue-dark"
                       }`}
                     >
-                      {isFollowing ? 'Following' : 'Follow'}
+                      {isFollowing ? "Following" : "Follow"}
                     </button>
                   </div>
                 );
@@ -158,12 +182,28 @@ export function Feed() {
       {follows.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">
           {follows.map((user) => (
-            <span key={user.id} className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 pl-1.5 pr-2 py-1 rounded-full text-xs">
-              <Link to={`/profile/${user.id}`} className="flex items-center gap-1.5 hover:text-ado-blue transition-colors">
-                <img src={user.imageUrl} alt="" className="w-4 h-4 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <span
+              key={user.id}
+              className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 pl-1.5 pr-2 py-1 rounded-full text-xs"
+            >
+              <Link
+                to={`/profile/${user.id}`}
+                className="flex items-center gap-1.5 hover:text-ado-blue transition-colors"
+              >
+                <img
+                  src={user.imageUrl}
+                  alt=""
+                  className="w-4 h-4 rounded-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
                 {user.displayName}
               </Link>
-              <button onClick={() => removeUser(user.id)} className="ml-1 text-zinc-400 hover:text-red-500">
+              <button
+                onClick={() => removeUser(user.id)}
+                className="ml-1 text-zinc-400 hover:text-red-500"
+              >
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -181,7 +221,10 @@ export function Feed() {
       {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 animate-pulse">
+            <div
+              key={i}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 animate-pulse"
+            >
               <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4 mb-3" />
               <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2" />
             </div>
@@ -221,15 +264,18 @@ const activityIcons: Record<string, typeof GitPullRequest> = {
 };
 
 const activityLabels: Record<string, string> = {
-  pr_created: 'created',
-  pr_completed: 'completed',
-  pr_approved: 'approved',
-  pr_approved_suggestions: 'approved with suggestions',
-  pr_rejected: 'rejected',
-  pr_waiting: 'is waiting on author for',
+  pr_created: "created",
+  pr_completed: "completed",
+  pr_approved: "approved",
+  pr_approved_suggestions: "approved with suggestions",
+  pr_rejected: "rejected",
+  pr_waiting: "is waiting on author for",
 };
 
-function ActivityCard({ item, org }: {
+function ActivityCard({
+  item,
+  org,
+}: {
   item: {
     type: string;
     user: { id: string; displayName: string; imageUrl: string };
@@ -251,29 +297,63 @@ function ActivityCard({ item, org }: {
 }) {
   const Icon = activityIcons[item.type] ?? Eye;
   const label = activityLabels[item.type] ?? item.type;
-  const webUrl = buildPrWebUrl(org, item.pullRequest.repository.project.name, item.pullRequest.repository.name, item.pullRequest.pullRequestId);
-  const isReviewAction = item.type !== 'pr_created' && item.type !== 'pr_completed';
+  const webUrl = buildPrWebUrl(
+    org,
+    item.pullRequest.repository.project.name,
+    item.pullRequest.repository.name,
+    item.pullRequest.pullRequestId,
+  );
+  const isReviewAction = item.type !== "pr_created" && item.type !== "pr_completed";
   const prStatus = item.pullRequest.status;
-  const statusColor = prStatus === 'completed' ? 'text-green-600' : prStatus === 'abandoned' ? 'text-red-500' : 'text-ado-blue';
-  const timeLabel = item.timestampLabel === 'completed' ? 'completed' : item.timestampLabel === 'updated' ? 'updated' : 'PR created';
+  const statusColor =
+    prStatus === "completed"
+      ? "text-green-600"
+      : prStatus === "abandoned"
+        ? "text-red-500"
+        : "text-ado-blue";
+  const timeLabel =
+    item.timestampLabel === "completed"
+      ? "completed"
+      : item.timestampLabel === "updated"
+        ? "updated"
+        : "PR created";
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
       <div className="flex items-start gap-3">
         <Link to={`/profile/${item.user.id}`} className="mt-0.5 flex-shrink-0">
-          <img src={item.user.imageUrl} alt="" className="w-8 h-8 rounded-full hover:ring-2 hover:ring-ado-blue/30 transition-all" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <img
+            src={item.user.imageUrl}
+            alt=""
+            className="w-8 h-8 rounded-full hover:ring-2 hover:ring-ado-blue/30 transition-all"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
         </Link>
         <div className="flex-1 min-w-0">
           <p className="text-sm">
-            <Link to={`/profile/${item.user.id}`} className="font-medium hover:text-ado-blue transition-colors">{item.isSelf ? 'You' : item.user.displayName}</Link>{' '}
-            <span className="text-zinc-500 dark:text-zinc-400">{label}</span>{' '}
-            <a href={webUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-ado-blue hover:underline">
+            <Link
+              to={`/profile/${item.user.id}`}
+              className="font-medium hover:text-ado-blue transition-colors"
+            >
+              {item.isSelf ? "You" : item.user.displayName}
+            </Link>{" "}
+            <span className="text-zinc-500 dark:text-zinc-400">{label}</span>{" "}
+            <a
+              href={webUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-ado-blue hover:underline"
+            >
               {item.pullRequest.title}
             </a>
           </p>
           <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400 flex-wrap">
             <Icon className="w-3 h-3" />
-            <span>{item.pullRequest.repository.project.name}/{item.pullRequest.repository.name}</span>
+            <span>
+              {item.pullRequest.repository.project.name}/{item.pullRequest.repository.name}
+            </span>
             {isReviewAction && (
               <>
                 <span>·</span>
@@ -281,9 +361,14 @@ function ActivityCard({ item, org }: {
               </>
             )}
             <span>·</span>
-            <span className={statusColor}>{prStatus}{item.pullRequest.isDraft ? ' (draft)' : ''}</span>
+            <span className={statusColor}>
+              {prStatus}
+              {item.pullRequest.isDraft ? " (draft)" : ""}
+            </span>
             <span>·</span>
-            <span>{timeLabel} {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}</span>
+            <span>
+              {timeLabel} {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
+            </span>
           </div>
         </div>
       </div>

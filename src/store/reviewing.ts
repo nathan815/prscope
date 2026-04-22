@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface ReviewingPRsState {
   prIds: Set<string>;
@@ -21,8 +21,7 @@ export const useReviewingStore = create<ReviewingPRsState>()(
   persist(
     (set, get) => ({
       prIds: new Set<string>(),
-      add: (prKey) =>
-        set((s) => ({ prIds: new Set(s.prIds).add(prKey) })),
+      add: (prKey) => set((s) => ({ prIds: new Set(s.prIds).add(prKey) })),
       remove: (prKey) =>
         set((s) => {
           const next = new Set(s.prIds);
@@ -39,7 +38,7 @@ export const useReviewingStore = create<ReviewingPRsState>()(
       },
     }),
     {
-      name: 'prscope-reviewing',
+      name: "prscope-reviewing",
       storage: {
         getItem: (name) => {
           const raw = localStorage.getItem(name);
@@ -53,14 +52,17 @@ export const useReviewingStore = create<ReviewingPRsState>()(
         setItem: (name, value) => {
           const serialized = {
             ...value,
-            state: { ...value.state, prIds: serializeSet(value.state.prIds as unknown as Set<string>) },
+            state: {
+              ...value.state,
+              prIds: serializeSet(value.state.prIds as unknown as Set<string>),
+            },
           };
           localStorage.setItem(name, JSON.stringify(serialized));
         },
         removeItem: (name) => localStorage.removeItem(name),
       },
-    }
-  )
+    },
+  ),
 );
 
 export function prKey(projectName: string, repoName: string, prId: number): string {

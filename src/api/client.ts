@@ -1,25 +1,25 @@
-import type { PagedResponse } from '../types';
-import type { AuthMode } from '../auth/useAuth';
-import { getCached, setCache } from './cache';
-import { useIdentityStore } from '../store/identities';
+import type { PagedResponse } from "../types";
+import type { AuthMode } from "../auth/useAuth";
+import { getCached, setCache } from "./cache";
+import { useIdentityStore } from "../store/identities";
 
-let cachedOrg = '';
-let cachedMode: AuthMode = 'oauth';
+let cachedOrg = "";
+let cachedMode: AuthMode = "oauth";
 let cachedTokenProvider: (() => Promise<string>) | null = null;
 
-export function configureClient(
-  org: string,
-  mode: AuthMode,
-  tokenProvider: () => Promise<string>
-) {
+export function configureClient(org: string, mode: AuthMode, tokenProvider: () => Promise<string>) {
   cachedOrg = org;
   cachedMode = mode;
   cachedTokenProvider = tokenProvider;
 }
 
-async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado', init?: { method?: string; body?: string }): Promise<T> {
+async function adoFetch<T>(
+  path: string,
+  base: "ado" | "vssps" = "ado",
+  init?: { method?: string; body?: string },
+): Promise<T> {
   if (!cachedOrg || !cachedTokenProvider) {
-    throw new Error('ADO client not configured');
+    throw new Error("ADO client not configured");
   }
 
   const token = await cachedTokenProvider();
@@ -27,17 +27,17 @@ async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado', init?: {
   let url: string;
   const headers: Record<string, string> = {};
 
-  if (cachedMode === 'oauth' || cachedMode === 'az-cli') {
-    const baseUrl = base === 'ado' ? 'https://dev.azure.com' : 'https://vssps.dev.azure.com';
+  if (cachedMode === "oauth" || cachedMode === "az-cli") {
+    const baseUrl = base === "ado" ? "https://dev.azure.com" : "https://vssps.dev.azure.com";
     url = `${baseUrl}/${cachedOrg}${path}`;
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   } else {
     url = `/api/${base}/${cachedOrg}${path}`;
-    headers['x-ado-pat'] = token;
+    headers["x-ado-pat"] = token;
   }
 
   if (init?.body) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
 
   const res = await fetch(url, { headers, method: init?.method, body: init?.body });
@@ -52,20 +52,39 @@ async function adoFetch<T>(path: string, base: 'ado' | 'vssps' = 'ado', init?: {
 
 export async function getConnectionData() {
   return adoFetch<{
-    authenticatedUser: { id: string; providerDisplayName: string; properties: Record<string, { $value: string }> };
-    authorizedUser: { id: string; providerDisplayName: string; properties: Record<string, { $value: string }> };
-  }>('/_apis/connectionData');
+    authenticatedUser: {
+      id: string;
+      providerDisplayName: string;
+      properties: Record<string, { $value: string }>;
+    };
+    authorizedUser: {
+      id: string;
+      providerDisplayName: string;
+      properties: Record<string, { $value: string }>;
+    };
+  }>("/_apis/connectionData");
 }
 
 export async function getProjects() {
-  const res = await adoFetch<PagedResponse<{ id: string; name: string; description?: string; state: string }>>('/_apis/projects?api-version=7.1&$top=500');
-  return res.value.filter((p) => p.state === 'wellFormed').sort((a, b) => a.name.localeCompare(b.name));
+  const res = await adoFetch<
+    PagedResponse<{ id: string; name: string; description?: string; state: string }>
+  >("/_apis/projects?api-version=7.1&$top=500");
+  return res.value
+    .filter((p) => p.state === "wellFormed")
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getRepositories(projectName: string) {
-  const res = await adoFetch<PagedResponse<{
-    id: string; name: string; webUrl: string; project: { id: string; name: string }; defaultBranch?: string; size: number;
-  }>>(`/${encodeURIComponent(projectName)}/_apis/git/repositories?api-version=7.1`);
+  const res = await adoFetch<
+    PagedResponse<{
+      id: string;
+      name: string;
+      webUrl: string;
+      project: { id: string; name: string };
+      defaultBranch?: string;
+      size: number;
+    }>
+  >(`/${encodeURIComponent(projectName)}/_apis/git/repositories?api-version=7.1`);
   return res.value.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -78,32 +97,47 @@ export async function getPullRequests(
     reviewerId?: string;
     top?: number;
     skip?: number;
-  } = {}
+  } = {},
 ) {
-  const params = new URLSearchParams({ 'api-version': '7.1' });
-  if (options.status) params.set('searchCriteria.status', options.status);
-  if (options.creatorId) params.set('searchCriteria.creatorId', options.creatorId);
-  if (options.reviewerId) params.set('searchCriteria.reviewerId', options.reviewerId);
-  params.set('$top', String(options.top ?? 50));
-  if (options.skip) params.set('$skip', String(options.skip));
+  const params = new URLSearchParams({ "api-version": "7.1" });
+  if (options.status) params.set("searchCriteria.status", options.status);
+  if (options.creatorId) params.set("searchCriteria.creatorId", options.creatorId);
+  if (options.reviewerId) params.set("searchCriteria.reviewerId", options.reviewerId);
+  params.set("$top", String(options.top ?? 50));
+  if (options.skip) params.set("$skip", String(options.skip));
 
-  const res = await adoFetch<PagedResponse<{
-    pullRequestId: number;
-    title: string;
-    description?: string;
-    status: string;
-    createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string };
-    creationDate: string;
-    closedDate?: string;
-    isDraft: boolean;
-    mergeStatus?: string;
-    repository: { id: string; name: string; webUrl: string; project: { id: string; name: string } };
-    sourceRefName: string;
-    targetRefName: string;
-    reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string; vote: number; isRequired?: boolean; hasDeclined?: boolean }[];
-    labels?: { id: string; name: string; active: boolean }[];
-  }>>(
-    `/${encodeURIComponent(projectName)}/_apis/git/repositories/${repositoryId}/pullrequests?${params}`
+  const res = await adoFetch<
+    PagedResponse<{
+      pullRequestId: number;
+      title: string;
+      description?: string;
+      status: string;
+      createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string };
+      creationDate: string;
+      closedDate?: string;
+      isDraft: boolean;
+      mergeStatus?: string;
+      repository: {
+        id: string;
+        name: string;
+        webUrl: string;
+        project: { id: string; name: string };
+      };
+      sourceRefName: string;
+      targetRefName: string;
+      reviewers: {
+        id: string;
+        displayName: string;
+        uniqueName: string;
+        imageUrl: string;
+        vote: number;
+        isRequired?: boolean;
+        hasDeclined?: boolean;
+      }[];
+      labels?: { id: string; name: string; active: boolean }[];
+    }>
+  >(
+    `/${encodeURIComponent(projectName)}/_apis/git/repositories/${repositoryId}/pullrequests?${params}`,
   );
 
   return res.value;
@@ -120,17 +154,17 @@ export async function getProjectPullRequests(
     minTime?: string;
     maxTime?: string;
     skipCache?: boolean;
-  } = {}
+  } = {},
 ) {
   const CACHE_TTL = 5 * 60 * 1000;
-  const params = new URLSearchParams({ 'api-version': '7.1' });
-  if (options.status) params.set('searchCriteria.status', options.status);
-  if (options.creatorId) params.set('searchCriteria.creatorId', options.creatorId);
-  if (options.reviewerId) params.set('searchCriteria.reviewerId', options.reviewerId);
-  if (options.minTime) params.set('searchCriteria.minTime', options.minTime);
-  if (options.maxTime) params.set('searchCriteria.maxTime', options.maxTime);
-  params.set('$top', String(options.top ?? 100));
-  if (options.skip) params.set('$skip', String(options.skip));
+  const params = new URLSearchParams({ "api-version": "7.1" });
+  if (options.status) params.set("searchCriteria.status", options.status);
+  if (options.creatorId) params.set("searchCriteria.creatorId", options.creatorId);
+  if (options.reviewerId) params.set("searchCriteria.reviewerId", options.reviewerId);
+  if (options.minTime) params.set("searchCriteria.minTime", options.minTime);
+  if (options.maxTime) params.set("searchCriteria.maxTime", options.maxTime);
+  params.set("$top", String(options.top ?? 100));
+  if (options.skip) params.set("$skip", String(options.skip));
 
   const cacheKey = `prs:${cachedOrg}:${projectName}:${params}`;
   type PRResult = {
@@ -146,7 +180,15 @@ export async function getProjectPullRequests(
     repository: { id: string; name: string; webUrl: string; project: { id: string; name: string } };
     sourceRefName: string;
     targetRefName: string;
-    reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string; vote: number; isRequired?: boolean; hasDeclined?: boolean }[];
+    reviewers: {
+      id: string;
+      displayName: string;
+      uniqueName: string;
+      imageUrl: string;
+      vote: number;
+      isRequired?: boolean;
+      hasDeclined?: boolean;
+    }[];
     labels?: { id: string; name: string; active: boolean }[];
   };
 
@@ -156,7 +198,7 @@ export async function getProjectPullRequests(
   }
 
   const res = await adoFetch<PagedResponse<PRResult>>(
-    `/${encodeURIComponent(projectName)}/_apis/git/pullrequests?${params}`
+    `/${encodeURIComponent(projectName)}/_apis/git/pullrequests?${params}`,
   );
 
   await setCache(cacheKey, res.value);
@@ -168,7 +210,7 @@ export async function getProjectPullRequests(
 export async function getPullRequestThreads(
   projectName: string,
   repositoryId: string,
-  pullRequestId: number
+  pullRequestId: number,
 ) {
   const CACHE_TTL = 30 * 60 * 1000;
   const cacheKey = `threads:${cachedOrg}:${projectName}:${repositoryId}:${pullRequestId}`;
@@ -193,7 +235,7 @@ export async function getPullRequestThreads(
   if (cached) return cached;
 
   const res = await adoFetch<PagedResponse<ThreadResult>>(
-    `/${encodeURIComponent(projectName)}/_apis/git/repositories/${repositoryId}/pullrequests/${pullRequestId}/threads?api-version=7.1`
+    `/${encodeURIComponent(projectName)}/_apis/git/repositories/${repositoryId}/pullrequests/${pullRequestId}/threads?api-version=7.1`,
   );
 
   await setCache(cacheKey, res.value);
@@ -214,33 +256,29 @@ export async function searchIdentities(query: string) {
         subjectDescriptor: string | null;
       }[];
     }[];
-  }>(
-    `/_apis/IdentityPicker/Identities?api-version=7.1-preview.1`,
-    'ado',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        query,
-        identityTypes: ['user'],
-        operationScopes: ['ims', 'source'],
-        properties: ['DisplayName', 'Mail', 'SignInAddress', 'SamAccountName', 'SubjectDescriptor'],
-        options: { MinResults: 5, MaxResults: 20 },
-      }),
-    }
-  );
+  }>(`/_apis/IdentityPicker/Identities?api-version=7.1-preview.1`, "ado", {
+    method: "POST",
+    body: JSON.stringify({
+      query,
+      identityTypes: ["user"],
+      operationScopes: ["ims", "source"],
+      properties: ["DisplayName", "Mail", "SignInAddress", "SamAccountName", "SubjectDescriptor"],
+      options: { MinResults: 5, MaxResults: 20 },
+    }),
+  });
 
   return (res.results?.[0]?.identities ?? [])
     .filter((i) => i.displayName)
     .map((i) => ({
       id: i.localId ?? i.originId,
-      displayName: i.displayName ?? '',
-      uniqueName: i.signInAddress ?? i.mail ?? i.samAccountName ?? '',
-      imageUrl: i.localId ? buildIdentityImageUrl(i.localId) : '',
+      displayName: i.displayName ?? "",
+      uniqueName: i.signInAddress ?? i.mail ?? i.samAccountName ?? "",
+      imageUrl: i.localId ? buildIdentityImageUrl(i.localId) : "",
     }));
 }
 
 function buildIdentityImageUrl(identityId: string): string {
-  if (cachedMode === 'oauth' || cachedMode === 'az-cli') {
+  if (cachedMode === "oauth" || cachedMode === "az-cli") {
     return `https://dev.azure.com/${cachedOrg}/_api/_common/identityImage?id=${identityId}`;
   }
   return `/api/ado/${cachedOrg}/_api/_common/identityImage?id=${identityId}`;
@@ -250,10 +288,20 @@ export function buildPrWebUrl(org: string, projectName: string, repoName: string
   return `https://dev.azure.com/${org}/${encodeURIComponent(projectName)}/_git/${encodeURIComponent(repoName)}/pullrequest/${prId}`;
 }
 
-function collectIdentitiesFromPRs(prs: { createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string }; reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string }[] }[]) {
+function collectIdentitiesFromPRs(
+  prs: {
+    createdBy: { id: string; displayName: string; uniqueName: string; imageUrl: string };
+    reviewers: { id: string; displayName: string; uniqueName: string; imageUrl: string }[];
+  }[],
+) {
   const identities = prs.flatMap((pr) => [
     pr.createdBy,
-    ...pr.reviewers.map(({ id, displayName, uniqueName, imageUrl }) => ({ id, displayName, uniqueName, imageUrl })),
+    ...pr.reviewers.map(({ id, displayName, uniqueName, imageUrl }) => ({
+      id,
+      displayName,
+      uniqueName,
+      imageUrl,
+    })),
   ]);
   useIdentityStore.getState().upsertMany(identities);
 }

@@ -1,16 +1,16 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import { Layout } from './components/Layout';
-import { ToastContainer } from './components/Toast';
-import { MyPRs } from './pages/MyPRs';
-import { Repos } from './pages/Repos';
-import { Feed } from './pages/Feed';
-import { Settings } from './pages/Settings';
-import { Profile } from './pages/Profile';
-import { People } from './pages/People';
-import { useSettingsStore } from './store/settings';
-import { useAuth } from './auth/useAuth';
-import { configureClient } from './api/client';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Layout } from "./components/Layout";
+import { ToastContainer } from "./components/Toast";
+import { MyPRs } from "./pages/MyPRs";
+import { Repos } from "./pages/Repos";
+import { Feed } from "./pages/Feed";
+import { Settings } from "./pages/Settings";
+import { Profile } from "./pages/Profile";
+import { People } from "./pages/People";
+import { useSettingsStore } from "./store/settings";
+import { useAuth } from "./auth/useAuth";
+import { configureClient } from "./api/client";
 
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
@@ -25,10 +25,10 @@ export default function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.add(prefersDark ? 'dark' : 'light');
+    root.classList.remove("light", "dark");
+    if (theme === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.add(prefersDark ? "dark" : "light");
     } else {
       root.classList.add(theme);
     }

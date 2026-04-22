@@ -26,17 +26,12 @@ export function computeReviewThoroughness(metrics: ReviewMetrics): number {
   const rejected = metrics.rejected ?? 0;
 
   const totalApprovals = approvalsWithComments + approvalsWithoutComments;
-  const commentedApprovalRate = totalApprovals > 0
-    ? approvalsWithComments / totalApprovals
-    : 0;
+  const commentedApprovalRate = totalApprovals > 0 ? approvalsWithComments / totalApprovals : 0;
 
   const commentDepth = Math.min(metrics.avgCommentsPerPr / 4, 1);
-  const usesStrongSignals = (waitingForAuthor + rejected) > 0 ? 1 : 0;
+  const usesStrongSignals = waitingForAuthor + rejected > 0 ? 1 : 0;
 
-  const raw =
-    commentDepth * 0.5 +
-    commentedApprovalRate * 0.35 +
-    usesStrongSignals * 0.15;
+  const raw = commentDepth * 0.5 + commentedApprovalRate * 0.35 + usesStrongSignals * 0.15;
 
   return Math.round((1 + raw * 4) * 10) / 10;
 }

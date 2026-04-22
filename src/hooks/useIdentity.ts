@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { useIdentityStore, type IdentityRecord } from '../store/identities';
-import { searchIdentities } from '../api/client';
+import { useQuery } from "@tanstack/react-query";
+import { useIdentityStore, type IdentityRecord } from "../store/identities";
+import { searchIdentities } from "../api/client";
 
 export function useIdentity(userId: string): { data: IdentityRecord | null; isLoading: boolean } {
   const cached = useIdentityStore((s) => s.records[userId]);
@@ -8,7 +8,7 @@ export function useIdentity(userId: string): { data: IdentityRecord | null; isLo
   const upsert = useIdentityStore((s) => s.upsert);
 
   const { isLoading } = useQuery({
-    queryKey: ['identity', userId],
+    queryKey: ["identity", userId],
     queryFn: async () => {
       const results = await searchIdentities(userId);
       const match = results.find((r) => r.id === userId) ?? results[0];

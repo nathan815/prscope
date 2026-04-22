@@ -1,17 +1,17 @@
-import { useState, useMemo, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { Star, Search, Loader2, FolderOpen, X, Check } from 'lucide-react';
-import { useProjects, useMultiProjectRepositories } from '../hooks/useAdo';
-import { useFavoritesStore } from '../store/favorites';
-import { useSelectedProjectsStore } from '../store/selectedProjects';
-import { usePageTitle } from '../hooks/usePageTitle';
+import { useState, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Star, Search, Loader2, FolderOpen, X, Check } from "lucide-react";
+import { useProjects, useMultiProjectRepositories } from "../hooks/useAdo";
+import { useFavoritesStore } from "../store/favorites";
+import { useSelectedProjectsStore } from "../store/selectedProjects";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const ROW_HEIGHT = 40;
 
 export function Repos() {
-  usePageTitle('Repos');
-  const [search, setSearch] = useState('');
-  const [projectSearch, setProjectSearch] = useState('');
+  usePageTitle("Repos");
+  const [search, setSearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   const favorites = useFavoritesStore((s) => s.repos);
@@ -25,22 +25,22 @@ export function Repos() {
 
   const { data: allProjects, isLoading: loadingProjects } = useProjects();
   const { data: repos, isLoading: loadingRepos } = useMultiProjectRepositories(
-    selectedProjects.map((p) => p.name)
+    selectedProjects.map((p) => p.name),
   );
 
   const filteredProjects = useMemo(
     () => allProjects?.filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase())),
-    [allProjects, projectSearch]
+    [allProjects, projectSearch],
   );
 
   const filteredRepos = useMemo(
     () => repos?.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
-    [repos, search]
+    [repos, search],
   );
 
   const filteredFavorites = useMemo(
     () => favorites.filter((r) => r.repoName.toLowerCase().includes(search.toLowerCase())),
-    [favorites, search]
+    [favorites, search],
   );
 
   const repoListRef = useRef<HTMLDivElement>(null);
@@ -66,7 +66,7 @@ export function Repos() {
             onClick={() => setShowProjectPicker(!showProjectPicker)}
             className="text-xs text-ado-blue hover:underline"
           >
-            {showProjectPicker ? 'Done' : 'Edit projects'}
+            {showProjectPicker ? "Done" : "Edit projects"}
           </button>
         </div>
 
@@ -128,10 +128,12 @@ export function Repos() {
                     key={project.id}
                     onClick={() => toggleProject({ id: project.id, name: project.name })}
                     className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${
-                      selected ? 'bg-ado-blue/5' : ''
+                      selected ? "bg-ado-blue/5" : ""
                     }`}
                   >
-                    <span className={selected ? 'font-medium text-ado-blue' : ''}>{project.name}</span>
+                    <span className={selected ? "font-medium text-ado-blue" : ""}>
+                      {project.name}
+                    </span>
                     {selected && <Check className="w-4 h-4 text-ado-blue" />}
                   </button>
                 );
@@ -150,7 +152,7 @@ export function Repos() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
-            placeholder={`Search${repos ? ` ${repos.length.toLocaleString()}` : ''} repositories...`}
+            placeholder={`Search${repos ? ` ${repos.length.toLocaleString()}` : ""} repositories...`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40 focus:border-ado-blue"
@@ -182,7 +184,7 @@ export function Repos() {
       {selectedProjects.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
-            {search ? 'Results' : 'All Repositories'}
+            {search ? "Results" : "All Repositories"}
             {filteredRepos && ` (${filteredRepos.length.toLocaleString()})`}
           </h2>
 
@@ -203,19 +205,17 @@ export function Repos() {
               className="overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
               style={{ height: Math.min(filteredRepos.length * ROW_HEIGHT, 600) }}
             >
-              <div
-                style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
-              >
+              <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const repo = filteredRepos[virtualRow.index]!;
                   return (
                     <div
                       key={repo.id}
                       style={{
-                        position: 'absolute',
+                        position: "absolute",
                         top: 0,
                         left: 0,
-                        width: '100%',
+                        width: "100%",
                         height: ROW_HEIGHT,
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
@@ -265,11 +265,11 @@ function RepoRow({
       <button
         onClick={onToggle}
         className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex-shrink-0"
-        title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        title={isFavorite ? "Remove from favorites" : "Add to favorites"}
       >
         <Star
           className={`w-4 h-4 ${
-            isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-400 hover:text-yellow-400'
+            isFavorite ? "fill-yellow-400 text-yellow-400" : "text-zinc-400 hover:text-yellow-400"
           }`}
         />
       </button>

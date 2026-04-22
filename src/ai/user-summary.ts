@@ -1,6 +1,6 @@
-import { getCached, setCache } from '../api/cache';
-import { callLLM } from '../api/llm';
-import { computeReviewThoroughness } from './review-thoroughness';
+import { getCached, setCache } from "../api/cache";
+import { callLLM } from "../api/llm";
+import { computeReviewThoroughness } from "./review-thoroughness";
 
 export interface AISummaryInput {
   prs: { id: number; title: string; repo: string; creationDate: string; status: string }[];
@@ -34,7 +34,11 @@ export interface CachedSummaryMatch {
   exact: boolean;
 }
 
-export async function getCachedSummary(userId: string, timeRange: string, fetchLimit: number): Promise<CachedSummaryMatch | null> {
+export async function getCachedSummary(
+  userId: string,
+  timeRange: string,
+  fetchLimit: number,
+): Promise<CachedSummaryMatch | null> {
   const entries = await getCached<AISummaryResult[]>(userCacheKey(userId), CACHE_TTL);
   if (!entries || entries.length === 0) return null;
 
@@ -46,12 +50,18 @@ export async function getCachedSummary(userId: string, timeRange: string, fetchL
   return { result: entries[0]!, exact: false };
 }
 
-async function saveSummary(userId: string, timeRange: string, fetchLimit: number, result: AISummaryResult): Promise<void> {
+async function saveSummary(
+  userId: string,
+  timeRange: string,
+  fetchLimit: number,
+  result: AISummaryResult,
+): Promise<void> {
   const entries = (await getCached<AISummaryResult[]>(userCacheKey(userId), CACHE_TTL)) ?? [];
   const now = Date.now();
 
   const cleaned = entries.filter((e) => {
-    const isCurrentParams = e.generatedFor?.timeRange === timeRange && e.generatedFor?.fetchLimit === fetchLimit;
+    const isCurrentParams =
+      e.generatedFor?.timeRange === timeRange && e.generatedFor?.fetchLimit === fetchLimit;
     if (isCurrentParams) return false;
     const age = now - new Date(e.generatedAt).getTime();
     return age < ENTRY_MAX_AGE;
@@ -98,7 +108,15 @@ function branchName(ref: string) {
 }
 
 function voteLabel(v: number) {
-  return v >= 10 ? "approved" : v >= 5 ? "approved w/ suggestions" : v <= -10 ? "rejected" : v <= -5 ? "waiting" : null;
+  return v >= 10
+    ? "approved"
+    : v >= 5
+      ? "approved w/ suggestions"
+      : v <= -10
+        ? "rejected"
+        : v <= -5
+          ? "waiting"
+          : null;
 }
 
 function formatPR(pr: PRData): string {
@@ -183,12 +201,12 @@ Write in third person using gender-neutral pronouns (they/their). Be specific an
 }
 
 function isWorkStyle(v: unknown): v is { created: number; reviewed: number } {
-  return typeof v === 'object' && v !== null && 'created' in v && 'reviewed' in v;
+  return typeof v === "object" && v !== null && "created" in v && "reviewed" in v;
 }
 
 export async function generateUserSummary(
   context: UserSummaryContext,
-  inputPRs: AISummaryInput['prs'] = [],
+  inputPRs: AISummaryInput["prs"] = [],
   cacheId: { userId: string; timeRange: string; fetchLimit: number },
   skipCache = false,
 ): Promise<AISummaryResult> {
@@ -200,8 +218,8 @@ export async function generateUserSummary(
   const prompt = buildPrompt(context);
   const inputData: AISummaryInput = { prs: inputPRs, prompt };
 
-  const { content: rawContent, model } = await callLLM([{ role: 'user', content: prompt }]);
-  const cleaned = rawContent.replace(/^```json?\s*|\s*```$/g, '').trim();
+  const { content: rawContent, model } = await callLLM([{ role: "user", content: prompt }]);
+  const cleaned = rawContent.replace(/^```json?\s*|\s*```$/g, "").trim();
 
   let parsed: unknown;
   try {
@@ -211,8 +229,10 @@ export async function generateUserSummary(
   }
 
   const obj = parsed as Record<string, unknown>;
-  if (typeof obj.summary !== 'string' || !obj.summary) {
-    throw new Error(`LLM response missing "summary" field. Parsed:\n${JSON.stringify(obj).slice(0, 500)}`);
+  if (typeof obj.summary !== "string" || !obj.summary) {
+    throw new Error(
+      `LLM response missing "summary" field. Parsed:\n${JSON.stringify(obj).slice(0, 500)}`,
+    );
   }
 
   const ins = (obj.insights ?? {}) as Record<string, unknown>;

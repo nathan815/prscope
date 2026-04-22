@@ -1,14 +1,38 @@
-import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, CheckCircle2, AlertCircle, Loader2, Telescope, LogIn, LogOut, KeyRound, Shield, Terminal } from 'lucide-react';
-import { useSettingsStore } from '../store/settings';
-import { configureClient, getConnectionData } from '../api/client';
-import { useAuth } from '../auth/useAuth';
-import { msalAvailable } from '../auth/msalConfig';
-import { usePageTitle } from '../hooks/usePageTitle';
+import { useState, useEffect } from "react";
+import {
+  Settings as SettingsIcon,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Telescope,
+  LogIn,
+  LogOut,
+  KeyRound,
+  Shield,
+  Terminal,
+} from "lucide-react";
+import { useSettingsStore } from "../store/settings";
+import { configureClient, getConnectionData } from "../api/client";
+import { useAuth } from "../auth/useAuth";
+import { msalAvailable } from "../auth/msalConfig";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export function Settings({ firstRun }: { firstRun?: boolean }) {
-  usePageTitle(firstRun ? 'Welcome' : 'Settings');
-  const { organization, pat, theme, authMode, maxPRs, setOrganization, setPat, setUser, setTheme, setAuthMode, setAzCliAuthenticated, setMaxPRs } = useSettingsStore();
+  usePageTitle(firstRun ? "Welcome" : "Settings");
+  const {
+    organization,
+    pat,
+    theme,
+    authMode,
+    maxPRs,
+    setOrganization,
+    setPat,
+    setUser,
+    setTheme,
+    setAuthMode,
+    setAzCliAuthenticated,
+    setMaxPRs,
+  } = useSettingsStore();
   const auth = useAuth();
 
   const [orgInput, setOrgInput] = useState(organization);
@@ -27,7 +51,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
     setTesting(true);
     setTestResult(null);
 
-    configureClient(orgInput, 'pat', async () => patInput);
+    configureClient(orgInput, "pat", async () => patInput);
 
     try {
       const data = await getConnectionData();
@@ -37,7 +61,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
       setOrganization(orgInput);
       setPat(patInput);
       setUser(userId, displayName);
-      setAuthMode('pat');
+      setAuthMode("pat");
     } catch (err) {
       setTestResult({ ok: false, message: (err as Error).message });
     } finally {
@@ -51,14 +75,17 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
     setTestResult(null);
     try {
       setOrganization(orgInput);
-      setAuthMode('oauth');
+      setAuthMode("oauth");
       await auth.login();
 
-      configureClient(orgInput, 'oauth', auth.getToken);
+      configureClient(orgInput, "oauth", auth.getToken);
       try {
         const data = await getConnectionData();
         setUser(data.authenticatedUser.id, data.authenticatedUser.providerDisplayName);
-        setTestResult({ ok: true, message: `Signed in as ${data.authenticatedUser.providerDisplayName}` });
+        setTestResult({
+          ok: true,
+          message: `Signed in as ${data.authenticatedUser.providerDisplayName}`,
+        });
       } catch {
         setTestResult({ ok: true, message: `Signed in as ${auth.userName}` });
         if (auth.userId) setUser(auth.userId, auth.userName);
@@ -76,16 +103,16 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
     setTestResult(null);
 
     const azCliTokenProvider = async () => {
-      const res = await fetch('/api/auth/az-cli-token');
+      const res = await fetch("/api/auth/az-cli-token");
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `az cli token failed: ${res.status}`);
       }
-      const data = await res.json() as { accessToken: string };
+      const data = (await res.json()) as { accessToken: string };
       return data.accessToken;
     };
 
-    configureClient(orgInput, 'az-cli', azCliTokenProvider);
+    configureClient(orgInput, "az-cli", azCliTokenProvider);
 
     try {
       const data = await getConnectionData();
@@ -94,7 +121,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
       setTestResult({ ok: true, message: `Connected as ${displayName}` });
       setOrganization(orgInput);
       setUser(userId, displayName);
-      setAuthMode('az-cli');
+      setAuthMode("az-cli");
       setAzCliAuthenticated(true);
     } catch (err) {
       setAzCliAuthenticated(false);
@@ -112,7 +139,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
   const selectedMode = authMode;
 
   return (
-    <div className={`max-w-xl ${firstRun ? 'mx-auto mt-24' : 'mx-auto'}`}>
+    <div className={`max-w-xl ${firstRun ? "mx-auto mt-24" : "mx-auto"}`}>
       {firstRun && (
         <div className="text-center mb-8">
           <Telescope className="w-14 h-14 text-ado-blue mx-auto mb-4" />
@@ -140,41 +167,43 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
             onChange={(e) => setOrgInput(e.target.value)}
             className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40 focus:border-ado-blue"
           />
-          <p className="text-xs text-zinc-400 mt-1">The organization name from dev.azure.com/{'<org>'}</p>
+          <p className="text-xs text-zinc-400 mt-1">
+            The organization name from dev.azure.com/{"<org>"}
+          </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium mb-2">Authentication Method</label>
           <div className="flex gap-2 mb-4 flex-wrap">
             <button
-              onClick={() => setAuthMode('az-cli')}
+              onClick={() => setAuthMode("az-cli")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedMode === 'az-cli'
-                  ? 'bg-ado-blue text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                selectedMode === "az-cli"
+                  ? "bg-ado-blue text-white"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
               }`}
             >
               <Terminal className="w-4 h-4" />
               Azure CLI
             </button>
             <button
-              onClick={() => setAuthMode('oauth')}
+              onClick={() => setAuthMode("oauth")}
               disabled={!msalAvailable}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedMode === 'oauth'
-                  ? 'bg-ado-blue text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-              } ${!msalAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                selectedMode === "oauth"
+                  ? "bg-ado-blue text-white"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+              } ${!msalAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Shield className="w-4 h-4" />
               Microsoft SSO
             </button>
             <button
-              onClick={() => setAuthMode('pat')}
+              onClick={() => setAuthMode("pat")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedMode === 'pat'
-                  ? 'bg-ado-blue text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                selectedMode === "pat"
+                  ? "bg-ado-blue text-white"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
               }`}
             >
               <KeyRound className="w-4 h-4" />
@@ -182,24 +211,32 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
             </button>
           </div>
 
-          {selectedMode === 'az-cli' && (
+          {selectedMode === "az-cli" && (
             <div className="space-y-3">
-              {auth.isAuthenticated && authMode === 'az-cli' ? (
+              {auth.isAuthenticated && authMode === "az-cli" ? (
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  <span className="text-sm">Connected as <strong>{auth.userName}</strong></span>
+                  <span className="text-sm">
+                    Connected as <strong>{auth.userName}</strong>
+                  </span>
                 </div>
               ) : (
                 <>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Uses your existing <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">az login</code> session. No app registration or PAT needed.
+                    Uses your existing{" "}
+                    <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">az login</code>{" "}
+                    session. No app registration or PAT needed.
                   </p>
                   <button
                     onClick={handleAzCliConnect}
                     disabled={testing || !orgInput}
                     className="flex items-center gap-2 bg-ado-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-ado-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Terminal className="w-4 h-4" />}
+                    {testing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Terminal className="w-4 h-4" />
+                    )}
                     Connect via Azure CLI
                   </button>
                 </>
@@ -207,31 +244,45 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
             </div>
           )}
 
-          {selectedMode === 'oauth' && !msalAvailable && (
+          {selectedMode === "oauth" && !msalAvailable && (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm">
-              <p className="font-medium text-amber-800 dark:text-amber-300 mb-2">OAuth not configured</p>
+              <p className="font-medium text-amber-800 dark:text-amber-300 mb-2">
+                OAuth not configured
+              </p>
               <p className="text-amber-700 dark:text-amber-400 mb-2">
-                Add both values to <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env.local</code>:
+                Add both values to{" "}
+                <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env.local</code>:
               </p>
               <pre className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded text-xs font-mono">
-{`VITE_MSAL_TENANT_ID=your-tenant-id
+                {`VITE_MSAL_TENANT_ID=your-tenant-id
 VITE_MSAL_CLIENT_ID=your-app-client-id`}
               </pre>
               <p className="text-amber-700 dark:text-amber-400 mt-2 text-xs">
-                Register a SPA app in Azure Portal {'>'} Entra ID {'>'} App registrations.<br />
-                Redirect URI: <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">http://localhost:5173</code><br />
-                API permission: Azure DevOps {'>'} <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">user_impersonation</code> (delegated). Then restart dev server.
+                Register a SPA app in Azure Portal {">"} Entra ID {">"} App registrations.
+                <br />
+                Redirect URI:{" "}
+                <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                  http://localhost:5173
+                </code>
+                <br />
+                API permission: Azure DevOps {">"}{" "}
+                <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                  user_impersonation
+                </code>{" "}
+                (delegated). Then restart dev server.
               </p>
             </div>
           )}
 
-          {selectedMode === 'oauth' && msalAvailable && (
+          {selectedMode === "oauth" && msalAvailable && (
             <div className="space-y-3">
-              {auth.authMode === 'oauth' && auth.isAuthenticated ? (
+              {auth.authMode === "oauth" && auth.isAuthenticated ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span className="text-sm">Signed in as <strong>{auth.userName}</strong></span>
+                    <span className="text-sm">
+                      Signed in as <strong>{auth.userName}</strong>
+                    </span>
                   </div>
                   <button
                     onClick={handleOAuthLogout}
@@ -247,14 +298,18 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
                   disabled={loggingIn || !orgInput}
                   className="flex items-center gap-2 bg-ado-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-ado-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                  {loggingIn ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <LogIn className="w-4 h-4" />
+                  )}
                   Sign in with Microsoft
                 </button>
               )}
             </div>
           )}
 
-          {selectedMode === 'pat' && (
+          {selectedMode === "pat" && (
             <div className="space-y-3">
               <div>
                 <input
@@ -265,7 +320,7 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
                   className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ado-blue/40 focus:border-ado-blue"
                 />
                 <p className="text-xs text-zinc-400 mt-1">
-                  Needs <strong>Code (Read)</strong> and <strong>Graph (Read)</strong> scopes.{' '}
+                  Needs <strong>Code (Read)</strong> and <strong>Graph (Read)</strong> scopes.{" "}
                   <a
                     href="https://dev.azure.com/_usersSettings/tokens"
                     target="_blank"
@@ -282,15 +337,21 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
                 className="flex items-center gap-2 bg-ado-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-ado-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {testing && <Loader2 className="w-4 h-4 animate-spin" />}
-                {firstRun ? 'Connect' : 'Test & Save'}
+                {firstRun ? "Connect" : "Test & Save"}
               </button>
             </div>
           )}
         </div>
 
         {testResult && (
-          <div className={`flex items-center gap-2 text-sm ${testResult.ok ? 'text-green-600' : 'text-red-600'}`}>
-            {testResult.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <div
+            className={`flex items-center gap-2 text-sm ${testResult.ok ? "text-green-600" : "text-red-600"}`}
+          >
+            {testResult.ok ? (
+              <CheckCircle2 className="w-4 h-4" />
+            ) : (
+              <AlertCircle className="w-4 h-4" />
+            )}
             {testResult.message}
           </div>
         )}
@@ -299,7 +360,9 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
       {!firstRun && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mt-4">
           <h2 className="text-sm font-semibold mb-3">PR Fetch Limit</h2>
-          <p className="text-xs text-zinc-400 mb-2">Max PRs to fetch per query. Increase if you have a long history.</p>
+          <p className="text-xs text-zinc-400 mb-2">
+            Max PRs to fetch per query. Increase if you have a long history.
+          </p>
           <div className="flex gap-2">
             {[500, 1000, 2000, 5000].map((n) => (
               <button
@@ -307,8 +370,8 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
                 onClick={() => setMaxPRs(n)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   maxPRs === n
-                    ? 'bg-ado-blue text-white'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    ? "bg-ado-blue text-white"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 }`}
               >
                 {n.toLocaleString()}
@@ -322,14 +385,14 @@ VITE_MSAL_CLIENT_ID=your-app-client-id`}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mt-4">
           <h2 className="text-sm font-semibold mb-3">Appearance</h2>
           <div className="flex gap-2">
-            {(['system', 'light', 'dark'] as const).map((t) => (
+            {(["system", "light", "dark"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTheme(t)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
                   theme === t
-                    ? 'bg-ado-blue text-white'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    ? "bg-ado-blue text-white"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 }`}
               >
                 {t}

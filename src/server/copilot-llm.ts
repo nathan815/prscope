@@ -55,8 +55,7 @@ export async function handleLLMChatRequest(
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify({
-        error:
-          "Copilot LLM call failed. Ensure you have a Copilot subscription and are logged in.",
+        error: "Copilot LLM call failed. Ensure you have a Copilot subscription and are logged in.",
         details: String(err),
       }),
     );

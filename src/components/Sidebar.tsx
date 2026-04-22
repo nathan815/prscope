@@ -1,14 +1,5 @@
 import { NavLink } from "react-router-dom";
-import {
-  GitPullRequest,
-  Star,
-  Rss,
-  Settings,
-  Telescope,
-  User,
-  Users,
-  Github,
-} from "lucide-react";
+import { GitPullRequest, Star, Rss, Settings, Telescope, User, Users, Github } from "lucide-react";
 import { useSettingsStore } from "../store/settings";
 import { useFavoritesStore } from "../store/favorites";
 import { useIdentityStore } from "../store/identities";
@@ -96,9 +87,7 @@ export function Sidebar() {
                 {displayName.charAt(0)}
               </div>
             )}
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-              {displayName}
-            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{displayName}</p>
           </div>
         )}
       </div>

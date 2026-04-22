@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from 'react';
-import { InteractionRequiredAuthError } from '@azure/msal-browser';
-import { useSettingsStore } from '../store/settings';
-import { adoScopes, msalInstance } from './msalConfig';
+import { useCallback, useMemo } from "react";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import { useSettingsStore } from "../store/settings";
+import { adoScopes, msalInstance } from "./msalConfig";
 
-type MsalHook = typeof import('@azure/msal-react').useMsal;
-type IsAuthHook = typeof import('@azure/msal-react').useIsAuthenticated;
+type MsalHook = typeof import("@azure/msal-react").useMsal;
+type IsAuthHook = typeof import("@azure/msal-react").useIsAuthenticated;
 
 let _useMsal: MsalHook | null = null;
 let _useIsAuthenticated: IsAuthHook | null = null;
@@ -14,7 +14,7 @@ export function registerMsalHooks(useMsal: MsalHook, useIsAuthenticated: IsAuthH
   _useIsAuthenticated = useIsAuthenticated;
 }
 
-export type AuthMode = 'oauth' | 'pat' | 'az-cli';
+export type AuthMode = "oauth" | "pat" | "az-cli";
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -41,52 +41,50 @@ export function useAuth(): AuthState {
   const azCliAuthenticated = useSettingsStore((s) => s.azCliAuthenticated);
 
   const isAuthenticated = useMemo(() => {
-    if (authMode === 'oauth') {
+    if (authMode === "oauth") {
       return oauthAuthenticated && organization.length > 0;
     }
-    if (authMode === 'az-cli') {
+    if (authMode === "az-cli") {
       return azCliAuthenticated && organization.length > 0;
     }
     return organization.length > 0 && pat.length > 0;
   }, [authMode, oauthAuthenticated, azCliAuthenticated, organization, pat]);
 
-  const userName = authMode === 'oauth'
-    ? (storedUserName || (oauthAccount?.name ?? ''))
-    : storedUserName;
+  const userName =
+    authMode === "oauth" ? storedUserName || (oauthAccount?.name ?? "") : storedUserName;
 
-  const userId = authMode === 'oauth'
-    ? (storedUserId || (oauthAccount?.localAccountId ?? ''))
-    : storedUserId;
+  const userId =
+    authMode === "oauth" ? storedUserId || (oauthAccount?.localAccountId ?? "") : storedUserId;
 
   const login = useCallback(async () => {
-    if (authMode === 'oauth' && msalInstance) {
+    if (authMode === "oauth" && msalInstance) {
       await msalInstance.loginPopup({ scopes: adoScopes });
     }
   }, [authMode]);
 
   const logout = useCallback(async () => {
-    if (authMode === 'oauth' && msalInstance) {
+    if (authMode === "oauth" && msalInstance) {
       await msalInstance.logoutPopup();
     }
   }, [authMode]);
 
   const getToken = useCallback(async (): Promise<string> => {
-    if (authMode === 'pat') {
+    if (authMode === "pat") {
       return pat;
     }
 
-    if (authMode === 'az-cli') {
-      const res = await fetch('/api/auth/az-cli-token');
+    if (authMode === "az-cli") {
+      const res = await fetch("/api/auth/az-cli-token");
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `az cli token failed: ${res.status}`);
       }
-      const data = await res.json() as { accessToken: string };
+      const data = (await res.json()) as { accessToken: string };
       return data.accessToken;
     }
 
     if (!msalInstance || !oauthAccount) {
-      throw new Error('Not authenticated with MSAL');
+      throw new Error("Not authenticated with MSAL");
     }
 
     try {

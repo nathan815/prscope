@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface IdentityRecord {
   id: string;
@@ -13,8 +13,8 @@ const STALE_MS = 2 * 24 * 60 * 60 * 1000;
 
 interface IdentityState {
   records: Record<string, IdentityRecord>;
-  upsert: (identity: Omit<IdentityRecord, 'lastSeen'>) => void;
-  upsertMany: (identities: Omit<IdentityRecord, 'lastSeen'>[]) => void;
+  upsert: (identity: Omit<IdentityRecord, "lastSeen">) => void;
+  upsertMany: (identities: Omit<IdentityRecord, "lastSeen">[]) => void;
   get: (userId: string) => IdentityRecord | undefined;
   isStale: (userId: string) => boolean;
 }
@@ -50,6 +50,6 @@ export const useIdentityStore = create<IdentityState>()(
         return Date.now() - record.lastSeen > STALE_MS;
       },
     }),
-    { name: 'prscope-identities' }
-  )
+    { name: "prscope-identities" },
+  ),
 );

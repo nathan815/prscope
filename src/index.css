@@ -26,7 +26,11 @@
 @variant dark (&:where(.dark, .dark *));
 
 html {
-  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Segoe UI",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 body {

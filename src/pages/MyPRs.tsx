@@ -1,36 +1,52 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { GitPullRequest, RefreshCw, PenLine, X, SlidersHorizontal, Calendar, Eye, UserCheck, CheckCircle2 } from 'lucide-react';
-import { subDays, subMonths, subYears, startOfDay } from 'date-fns';
-import { useSearchParams } from 'react-router-dom';
-import { PRCard } from '../components/PRCard';
-import { useMyPullRequests } from '../hooks/useAdo';
-import { useSelectedProjectsStore } from '../store/selectedProjects';
-import { useSettingsStore } from '../store/settings';
-import { useReviewingStore, prKey } from '../store/reviewing';
-import { usePageTitle } from '../hooks/usePageTitle';
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import {
+  GitPullRequest,
+  RefreshCw,
+  PenLine,
+  X,
+  SlidersHorizontal,
+  Calendar,
+  Eye,
+  UserCheck,
+  CheckCircle2,
+} from "lucide-react";
+import { subDays, subMonths, subYears, startOfDay } from "date-fns";
+import { useSearchParams } from "react-router-dom";
+import { PRCard } from "../components/PRCard";
+import { useMyPullRequests } from "../hooks/useAdo";
+import { useSelectedProjectsStore } from "../store/selectedProjects";
+import { useSettingsStore } from "../store/settings";
+import { useReviewingStore, prKey } from "../store/reviewing";
+import { usePageTitle } from "../hooks/usePageTitle";
 
-type StatusFilter = 'active' | 'completed' | 'abandoned' | 'all';
-type ViewTab = 'created' | 'assigned' | 'reviewing' | 'reviewed';
-type TimeFilter = '7d' | '30d' | '90d' | '6m' | '1y' | 'all';
+type StatusFilter = "active" | "completed" | "abandoned" | "all";
+type ViewTab = "created" | "assigned" | "reviewing" | "reviewed";
+type TimeFilter = "7d" | "30d" | "90d" | "6m" | "1y" | "all";
 
 const TIME_OPTIONS: { value: TimeFilter; label: string }[] = [
-  { value: '7d', label: '7 days' },
-  { value: '30d', label: '30 days' },
-  { value: '90d', label: '90 days' },
-  { value: '6m', label: '6 months' },
-  { value: '1y', label: '1 year' },
-  { value: 'all', label: 'All time' },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days" },
+  { value: "6m", label: "6 months" },
+  { value: "1y", label: "1 year" },
+  { value: "all", label: "All time" },
 ];
 
 function getTimeCutoff(filter: TimeFilter): string | undefined {
   const now = startOfDay(new Date());
   switch (filter) {
-    case '7d': return subDays(now, 7).toISOString();
-    case '30d': return subDays(now, 30).toISOString();
-    case '90d': return subDays(now, 90).toISOString();
-    case '6m': return subMonths(now, 6).toISOString();
-    case '1y': return subYears(now, 1).toISOString();
-    case 'all': return undefined;
+    case "7d":
+      return subDays(now, 7).toISOString();
+    case "30d":
+      return subDays(now, 30).toISOString();
+    case "90d":
+      return subDays(now, 90).toISOString();
+    case "6m":
+      return subMonths(now, 6).toISOString();
+    case "1y":
+      return subYears(now, 1).toISOString();
+    case "all":
+      return undefined;
   }
 }
 
@@ -47,8 +63,8 @@ function LimitPopover() {
     const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
   return (
@@ -62,15 +78,20 @@ function LimitPopover() {
       </button>
       {open && (
         <div className="absolute top-full right-0 mt-1 z-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg p-2 min-w-[140px]">
-          <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold px-2 mb-1">Fetch limit</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold px-2 mb-1">
+            Fetch limit
+          </p>
           {LIMIT_OPTIONS.map((n) => (
             <button
               key={n}
-              onClick={() => { setMaxPRs(n); setOpen(false); }}
+              onClick={() => {
+                setMaxPRs(n);
+                setOpen(false);
+              }}
               className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                 maxPRs === n
-                  ? 'bg-ado-blue/10 text-ado-blue font-medium'
-                  : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  ? "bg-ado-blue/10 text-ado-blue font-medium"
+                  : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
               {n.toLocaleString()}
@@ -83,24 +104,30 @@ function LimitPopover() {
 }
 
 export function MyPRs() {
-  usePageTitle('My PRs');
+  usePageTitle("My PRs");
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const tab = (searchParams.get('tab') as ViewTab) || 'created';
-  const status = (searchParams.get('status') as StatusFilter) || 'active';
-  const timeFilter = (searchParams.get('time') as TimeFilter) || '30d';
-  const repoFilter = searchParams.get('repo') || null;
+  const tab = (searchParams.get("tab") as ViewTab) || "created";
+  const status = (searchParams.get("status") as StatusFilter) || "active";
+  const timeFilter = (searchParams.get("time") as TimeFilter) || "30d";
+  const repoFilter = searchParams.get("repo") || null;
 
-  const setFilter = useCallback((updates: Record<string, string | null>) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      for (const [k, v] of Object.entries(updates)) {
-        if (v === null || v === undefined) next.delete(k);
-        else next.set(k, v);
-      }
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+  const setFilter = useCallback(
+    (updates: Record<string, string | null>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [k, v] of Object.entries(updates)) {
+            if (v === null || v === undefined) next.delete(k);
+            else next.set(k, v);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const minTime = useMemo(() => getTimeCutoff(timeFilter), [timeFilter]);
@@ -122,9 +149,10 @@ export function MyPRs() {
   }, [allCreated, allAssigned]);
 
   const reviewingPrs = useMemo(() => {
-    return allFetchedPrs.filter((pr) =>
-      pr.status !== 'completed' &&
-      reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId))
+    return allFetchedPrs.filter(
+      (pr) =>
+        pr.status !== "completed" &&
+        reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId)),
     );
   }, [allFetchedPrs, reviewingPrIds]);
 
@@ -133,19 +161,26 @@ export function MyPRs() {
       const myReview = pr.reviewers.find((r) => r.id === userId);
       return myReview && myReview.vote !== 0;
     });
-    const completedReviewing = allFetchedPrs.filter((pr) =>
-      pr.status === 'completed' &&
-      reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId))
+    const completedReviewing = allFetchedPrs.filter(
+      (pr) =>
+        pr.status === "completed" &&
+        reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId)),
     );
     const seen = new Set(voted.map((pr) => pr.pullRequestId));
     const merged = [...voted, ...completedReviewing.filter((pr) => !seen.has(pr.pullRequestId))];
-    return merged.sort((a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime());
+    return merged.sort(
+      (a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime(),
+    );
   }, [allAssigned, allFetchedPrs, reviewingPrIds, userId]);
 
-  const allPrs = tab === 'created' ? allCreated
-    : tab === 'assigned' ? allAssigned
-    : tab === 'reviewed' ? reviewedPrs
-    : reviewingPrs;
+  const allPrs =
+    tab === "created"
+      ? allCreated
+      : tab === "assigned"
+        ? allAssigned
+        : tab === "reviewed"
+          ? reviewedPrs
+          : reviewingPrs;
 
   const repoCounts = useMemo(() => {
     if (!allPrs) return [];
@@ -154,13 +189,12 @@ export function MyPRs() {
       const name = pr.repository.name;
       counts.set(name, (counts.get(name) ?? 0) + 1);
     }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1]);
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [allPrs]);
 
   const prs = useMemo(
-    () => repoFilter ? allPrs?.filter((pr) => pr.repository.name === repoFilter) : allPrs,
-    [allPrs, repoFilter]
+    () => (repoFilter ? allPrs?.filter((pr) => pr.repository.name === repoFilter) : allPrs),
+    [allPrs, repoFilter],
   );
 
   if (selectedProjects.length === 0) {
@@ -189,7 +223,7 @@ export function MyPRs() {
             disabled={isFetching}
             className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-ado-blue transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
@@ -197,11 +231,11 @@ export function MyPRs() {
 
       <div className="flex items-center gap-1 mb-4 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-fit">
         <button
-          onClick={() => setFilter({ tab: 'created', repo: null })}
+          onClick={() => setFilter({ tab: "created", repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            tab === 'created'
-              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            tab === "created"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <PenLine className="w-3.5 h-3.5" />
@@ -213,11 +247,11 @@ export function MyPRs() {
           )}
         </button>
         <button
-          onClick={() => setFilter({ tab: 'assigned', repo: null })}
+          onClick={() => setFilter({ tab: "assigned", repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            tab === 'assigned'
-              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            tab === "assigned"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <UserCheck className="w-3.5 h-3.5" />
@@ -229,11 +263,11 @@ export function MyPRs() {
           )}
         </button>
         <button
-          onClick={() => setFilter({ tab: 'reviewing', repo: null })}
+          onClick={() => setFilter({ tab: "reviewing", repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            tab === 'reviewing'
-              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            tab === "reviewing"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <Eye className="w-3.5 h-3.5" />
@@ -245,11 +279,11 @@ export function MyPRs() {
           )}
         </button>
         <button
-          onClick={() => setFilter({ tab: 'reviewed', repo: null })}
+          onClick={() => setFilter({ tab: "reviewed", repo: null })}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            tab === 'reviewed'
-              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            tab === "reviewed"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-zinc-100"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
@@ -264,14 +298,14 @@ export function MyPRs() {
 
       <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
         <div className="flex gap-2">
-          {(['active', 'completed', 'abandoned', 'all'] as const).map((s) => (
+          {(["active", "completed", "abandoned", "all"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFilter({ status: s, repo: null })}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
                 status === s
-                  ? 'bg-ado-blue text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  ? "bg-ado-blue text-white"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
               }`}
             >
               {s}
@@ -287,8 +321,8 @@ export function MyPRs() {
                 onClick={() => setFilter({ time: t.value })}
                 className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                   timeFilter === t.value
-                    ? 'bg-zinc-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                    ? "bg-zinc-700 dark:bg-zinc-300 text-white dark:text-zinc-900"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                 }`}
               >
                 {t.label}
@@ -320,12 +354,14 @@ export function MyPRs() {
                 onClick={() => setFilter({ repo: repoFilter === repo ? null : repo })}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${
                   repoFilter === repo
-                    ? 'bg-ado-blue text-white'
-                    : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-ado-blue/50'
+                    ? "bg-ado-blue text-white"
+                    : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-ado-blue/50"
                 }`}
               >
                 {repo}
-                <span className={`font-semibold ${repoFilter === repo ? 'text-white/80' : 'text-zinc-400'}`}>
+                <span
+                  className={`font-semibold ${repoFilter === repo ? "text-white/80" : "text-zinc-400"}`}
+                >
                   {count}
                 </span>
               </button>
@@ -343,7 +379,10 @@ export function MyPRs() {
       {isLoading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 animate-pulse">
+            <div
+              key={i}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 animate-pulse"
+            >
               <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-3/4 mb-3" />
               <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2" />
             </div>
@@ -354,9 +393,12 @@ export function MyPRs() {
       {prs && prs.length === 0 && !isLoading && (
         <div className="text-center py-12 text-zinc-500 dark:text-zinc-400">
           <p className="text-sm">
-            No {status === 'all' ? '' : status} pull requests found
-            {repoFilter ? ` in ${repoFilter}` : ''}
-            {timeFilter !== 'all' ? ` in the last ${TIME_OPTIONS.find((t) => t.value === timeFilter)?.label}` : ''}.
+            No {status === "all" ? "" : status} pull requests found
+            {repoFilter ? ` in ${repoFilter}` : ""}
+            {timeFilter !== "all"
+              ? ` in the last ${TIME_OPTIONS.find((t) => t.value === timeFilter)?.label}`
+              : ""}
+            .
           </p>
         </div>
       )}

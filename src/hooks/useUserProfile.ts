@@ -1,13 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { format } from 'date-fns';
-import { useSettingsStore } from '../store/settings';
-import { useSelectedProjectsStore } from '../store/selectedProjects';
-import * as api from '../api/client';
-import { configureClient } from '../api/client';
-import { useAuth } from '../auth/useAuth';
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { format } from "date-fns";
+import { useSettingsStore } from "../store/settings";
+import { useSelectedProjectsStore } from "../store/selectedProjects";
+import * as api from "../api/client";
+import { configureClient } from "../api/client";
+import { useAuth } from "../auth/useAuth";
 
-export function useUserProfile(userId: string, fetchLimit: number = 200, minTime?: string, maxTime?: string, reviewAnalysisLimit: number = 20) {
+export function useUserProfile(
+  userId: string,
+  fetchLimit: number = 200,
+  minTime?: string,
+  maxTime?: string,
+  reviewAnalysisLimit: number = 20,
+) {
   const organization = useSettingsStore((s) => s.organization);
   const { isAuthenticated, authMode, getToken } = useAuth();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
@@ -18,16 +24,37 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
   const isConfigured = isAuthenticated && userId.length > 0 && selectedProjects.length > 0;
 
   const prsQuery = useQuery({
-    queryKey: ['profile-prs', userId, selectedProjects.map((p) => p.name), fetchLimit, minTime, maxTime],
+    queryKey: [
+      "profile-prs",
+      userId,
+      selectedProjects.map((p) => p.name),
+      fetchLimit,
+      minTime,
+      maxTime,
+    ],
     queryFn: async () => {
       const results = await Promise.all(
         selectedProjects.map(async (project) => {
           const [created, reviewed] = await Promise.all([
-            api.getProjectPullRequests(project.name, { status: 'all', creatorId: userId, top: fetchLimit, minTime, maxTime, skipCache: isOwnProfile }),
-            api.getProjectPullRequests(project.name, { status: 'all', reviewerId: userId, top: fetchLimit, minTime, maxTime, skipCache: isOwnProfile }),
+            api.getProjectPullRequests(project.name, {
+              status: "all",
+              creatorId: userId,
+              top: fetchLimit,
+              minTime,
+              maxTime,
+              skipCache: isOwnProfile,
+            }),
+            api.getProjectPullRequests(project.name, {
+              status: "all",
+              reviewerId: userId,
+              top: fetchLimit,
+              minTime,
+              maxTime,
+              skipCache: isOwnProfile,
+            }),
           ]);
           return { created, reviewed };
-        })
+        }),
       );
 
       const created = results.flatMap((r) => r.created);
@@ -48,18 +75,31 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
   const reviewed = prsQuery.data?.reviewed ?? [];
 
   const topRepos = useQuery({
-    queryKey: ['profile-top-repos', userId, created.length, reviewed.length, minTime, maxTime],
+    queryKey: ["profile-top-repos", userId, created.length, reviewed.length, minTime, maxTime],
     queryFn: () => {
-      const counts = new Map<string, { name: string; project: string; created: number; reviewed: number }>();
+      const counts = new Map<
+        string,
+        { name: string; project: string; created: number; reviewed: number }
+      >();
       for (const pr of created) {
         const key = `${pr.repository.project.name}/${pr.repository.name}`;
-        const entry = counts.get(key) ?? { name: pr.repository.name, project: pr.repository.project.name, created: 0, reviewed: 0 };
+        const entry = counts.get(key) ?? {
+          name: pr.repository.name,
+          project: pr.repository.project.name,
+          created: 0,
+          reviewed: 0,
+        };
         entry.created++;
         counts.set(key, entry);
       }
       for (const pr of reviewed) {
         const key = `${pr.repository.project.name}/${pr.repository.name}`;
-        const entry = counts.get(key) ?? { name: pr.repository.name, project: pr.repository.project.name, created: 0, reviewed: 0 };
+        const entry = counts.get(key) ?? {
+          name: pr.repository.name,
+          project: pr.repository.project.name,
+          created: 0,
+          reviewed: 0,
+        };
         entry.reviewed++;
         counts.set(key, entry);
       }
@@ -73,17 +113,17 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
   });
 
   const contributionData = useQuery({
-    queryKey: ['profile-contributions', userId, created.length, reviewed.length, minTime, maxTime],
+    queryKey: ["profile-contributions", userId, created.length, reviewed.length, minTime, maxTime],
     queryFn: () => {
       const days = new Map<string, { created: number; reviewed: number }>();
       for (const pr of created) {
-        const day = format(new Date(pr.creationDate), 'yyyy-MM-dd');
+        const day = format(new Date(pr.creationDate), "yyyy-MM-dd");
         const entry = days.get(day) ?? { created: 0, reviewed: 0 };
         entry.created++;
         days.set(day, entry);
       }
       for (const pr of reviewed) {
-        const day = format(new Date(pr.creationDate), 'yyyy-MM-dd');
+        const day = format(new Date(pr.creationDate), "yyyy-MM-dd");
         const entry = days.get(day) ?? { created: 0, reviewed: 0 };
         entry.reviewed++;
         days.set(day, entry);
@@ -96,14 +136,24 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
 
   const reviewedForImpact = useMemo(
     () => reviewed.slice(0, reviewAnalysisLimit),
-    [reviewed, reviewAnalysisLimit]
+    [reviewed, reviewAnalysisLimit],
   );
 
   const reviewImpact = useQuery({
-    queryKey: ['profile-review-impact', userId, reviewedForImpact.map((p) => p.pullRequestId)],
+    queryKey: ["profile-review-impact", userId, reviewedForImpact.map((p) => p.pullRequestId)],
     queryFn: async () => {
       if (reviewedForImpact.length === 0) {
-        return { totalPrsAnalyzed: 0, totalComments: 0, prsWithComments: 0, avgCommentsPerPr: 0, completedCount: 0, abandonedCount: 0, completionRate: 0, threadStatuses: {} as Record<string, number>, commentTexts: [] as { content: string; filePath: string | null }[] };
+        return {
+          totalPrsAnalyzed: 0,
+          totalComments: 0,
+          prsWithComments: 0,
+          avgCommentsPerPr: 0,
+          completedCount: 0,
+          abandonedCount: 0,
+          completionRate: 0,
+          threadStatuses: {} as Record<string, number>,
+          commentTexts: [] as { content: string; filePath: string | null }[],
+        };
       }
       const prs = reviewedForImpact;
       const threads = await Promise.all(
@@ -112,33 +162,68 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
             const t = await api.getPullRequestThreads(
               pr.repository.project.name,
               pr.repository.id,
-              pr.pullRequestId
+              pr.pullRequestId,
             );
             return { threads: t };
           } catch {
             return { threads: [] };
           }
-        })
+        }),
       );
 
       let totalComments = 0;
       let prsWithComments = 0;
       const commentTexts: { content: string; filePath: string | null }[] = [];
       const threadStatuses = new Map<string, number>();
-      const repoStats = new Map<string, { name: string; project: string; prsReviewed: number; comments: number }>();
+      const repoStats = new Map<
+        string,
+        { name: string; project: string; prsReviewed: number; comments: number }
+      >();
       const prsWithCommentSet = new Set<number>();
 
-      type ReviewEvent = { type: 'vote'; prId: number; prTitle: string; repo: string; project: string; vote: number; date: string }
-        | { type: 'commented'; prId: number; prTitle: string; repo: string; project: string; count: number; date: string };
+      type ReviewEvent =
+        | {
+            type: "vote";
+            prId: number;
+            prTitle: string;
+            repo: string;
+            project: string;
+            vote: number;
+            date: string;
+          }
+        | {
+            type: "commented";
+            prId: number;
+            prTitle: string;
+            repo: string;
+            project: string;
+            count: number;
+            date: string;
+          };
 
       const rawEvents: ReviewEvent[] = [];
-      const commentsByPrDay = new Map<string, { prId: number; prTitle: string; repo: string; project: string; count: number; date: string }>();
+      const commentsByPrDay = new Map<
+        string,
+        {
+          prId: number;
+          prTitle: string;
+          repo: string;
+          project: string;
+          count: number;
+          date: string;
+        }
+      >();
 
       for (let i = 0; i < threads.length; i++) {
         const pr = prs[i]!;
         const { threads: prThreads } = threads[i]!;
         const repoKey = `${pr.repository.project.name}/${pr.repository.name}`;
-        const repo = repoStats.get(repoKey) ?? { name: pr.repository.name, project: pr.repository.project.name, prsReviewed: 0, comments: 0 };
+        const repo = repoStats.get(repoKey) ?? {
+          name: pr.repository.name,
+          project: pr.repository.project.name,
+          prsReviewed: 0,
+          comments: 0,
+        };
         repo.prsReviewed++;
 
         let prCommentCount = 0;
@@ -148,12 +233,12 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
             threadStatuses.set(thread.status, (threadStatuses.get(thread.status) ?? 0) + 1);
           }
 
-          const votedById = thread.properties?.['CodeReviewVotedByIdentity']?.['$value'];
-          const voteResult = thread.properties?.['CodeReviewVoteResult']?.['$value'];
+          const votedById = thread.properties?.["CodeReviewVotedByIdentity"]?.["$value"];
+          const voteResult = thread.properties?.["CodeReviewVoteResult"]?.["$value"];
           const voteAuthorId = thread.comments?.[0]?.author?.id;
           if (votedById && voteResult && voteAuthorId === userId) {
             rawEvents.push({
-              type: 'vote',
+              type: "vote",
               prId: pr.pullRequestId,
               prTitle: pr.title,
               repo: pr.repository.name,
@@ -164,14 +249,17 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
           }
 
           for (const comment of thread.comments) {
-            if (comment.author.id === userId && comment.commentType === 'text' && comment.content) {
+            if (comment.author.id === userId && comment.commentType === "text" && comment.content) {
               prCommentCount++;
               totalComments++;
               repo.comments++;
               if (commentTexts.length < 50) {
-                commentTexts.push({ content: comment.content.slice(0, 200), filePath: thread.threadContext?.filePath ?? null });
+                commentTexts.push({
+                  content: comment.content.slice(0, 200),
+                  filePath: thread.threadContext?.filePath ?? null,
+                });
               }
-              const day = format(new Date(comment.publishedDate), 'yyyy-MM-dd');
+              const day = format(new Date(comment.publishedDate), "yyyy-MM-dd");
               const groupKey = `${pr.pullRequestId}-${day}`;
               const existing = commentsByPrDay.get(groupKey);
               if (existing) {
@@ -198,16 +286,20 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
       }
 
       for (const group of commentsByPrDay.values()) {
-        rawEvents.push({ type: 'commented', ...group });
+        rawEvents.push({ type: "commented", ...group });
       }
 
-      const reviewHistory = rawEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const reviewHistory = rawEvents.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
 
-      const completedCount = prs.filter((pr) => pr.status === 'completed').length;
-      const abandonedCount = prs.filter((pr) => pr.status === 'abandoned').length;
+      const completedCount = prs.filter((pr) => pr.status === "completed").length;
+      const abandonedCount = prs.filter((pr) => pr.status === "abandoned").length;
       const repoBreakdown = Array.from(repoStats.values()).sort((a, b) => b.comments - a.comments);
 
-      const voteEvents = reviewHistory.filter((e): e is Extract<typeof e, { type: 'vote' }> => e.type === 'vote');
+      const voteEvents = reviewHistory.filter(
+        (e): e is Extract<typeof e, { type: "vote" }> => e.type === "vote",
+      );
 
       let approved = 0;
       let approvedWithSuggestions = 0;
@@ -230,8 +322,8 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
       }
 
       const dates = prs.map((pr) => pr.creationDate).sort();
-      const analyzedFrom = dates[0] ?? '';
-      const analyzedTo = dates[dates.length - 1] ?? '';
+      const analyzedFrom = dates[0] ?? "";
+      const analyzedTo = dates[dates.length - 1] ?? "";
 
       let approvalsWithComments = 0;
       let approvalsWithoutComments = 0;

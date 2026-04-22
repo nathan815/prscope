@@ -33,7 +33,7 @@ export interface AdoReviewer extends AdoIdentityRef {
   hasDeclined?: boolean;
 }
 
-export type PullRequestStatus = 'active' | 'completed' | 'abandoned' | 'all';
+export type PullRequestStatus = "active" | "completed" | "abandoned" | "all";
 
 export interface AdoPullRequest {
   pullRequestId: number;
@@ -127,7 +127,7 @@ export interface FollowedUser {
 
 export interface ActivityFeedItem {
   id: string;
-  type: 'pr_created' | 'pr_completed' | 'pr_reviewed' | 'pr_commented';
+  type: "pr_created" | "pr_completed" | "pr_reviewed" | "pr_commented";
   user: AdoIdentityRef;
   pullRequest: AdoPullRequest;
   timestamp: string;

@@ -34,13 +34,16 @@ npm install
 ### Authentication
 
 **Azure CLI (easiest):**
+
 ```bash
 az login
 npm run dev
 ```
+
 Open http://localhost:5173, enter your ADO org name, select "Azure CLI", and click Connect.
 
 **OAuth/MSAL:**
+
 1. Register a SPA in Azure Portal > Entra ID > App registrations
 2. Add redirect URI: `http://localhost:5173`
 3. Add API permission: Azure DevOps > `user_impersonation` (delegated)

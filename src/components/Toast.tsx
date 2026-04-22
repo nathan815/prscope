@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { useEffect, useRef } from 'react';
+import { create } from "zustand";
+import { useEffect, useRef } from "react";
 
 interface Toast {
   id: number;
@@ -47,7 +47,7 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: () => voi
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    requestAnimationFrame(() => el.classList.add('translate-y-0', 'opacity-100'));
+    requestAnimationFrame(() => el.classList.add("translate-y-0", "opacity-100"));
   }, []);
 
   return (

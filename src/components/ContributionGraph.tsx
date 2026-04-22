@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { format, startOfWeek, eachDayOfInterval, getDay, subDays } from 'date-fns';
+import { useMemo, useRef, useState, useEffect } from "react";
+import { format, startOfWeek, eachDayOfInterval, getDay, subDays } from "date-fns";
 
 interface ContributionGraphProps {
   data: Map<string, { created: number; reviewed: number }>;
@@ -15,15 +15,21 @@ const MIN_CELL = 10;
 const MAX_CELL = 16;
 
 function getIntensityColor(count: number, isDark: boolean): string {
-  if (count === 0) return isDark ? '#27272a' : '#f4f4f5';
-  if (count <= 1) return isDark ? '#0078d433' : '#0078d433';
-  if (count <= 3) return isDark ? '#0078d466' : '#0078d466';
-  if (count <= 5) return isDark ? '#0078d499' : '#0078d499';
-  return '#0078d4';
+  if (count === 0) return isDark ? "#27272a" : "#f4f4f5";
+  if (count <= 1) return isDark ? "#0078d433" : "#0078d433";
+  if (count <= 3) return isDark ? "#0078d466" : "#0078d466";
+  if (count <= 5) return isDark ? "#0078d499" : "#0078d499";
+  return "#0078d4";
 }
 
-export function ContributionGraph({ data, startDate, endDate, selectedDay, onDayClick }: ContributionGraphProps) {
-  const isDark = document.documentElement.classList.contains('dark');
+export function ContributionGraph({
+  data,
+  startDate,
+  endDate,
+  selectedDay,
+  onDayClick,
+}: ContributionGraphProps) {
+  const isDark = document.documentElement.classList.contains("dark");
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -44,11 +50,12 @@ export function ContributionGraph({ data, startDate, endDate, selectedDay, onDay
       : startOfWeek(subDays(end, 52 * 7), { weekStartsOn: 0 });
     const days = eachDayOfInterval({ start, end });
 
-    const weeks: { date: Date; key: string; count: number; created: number; reviewed: number }[][] = [];
-    let currentWeek: typeof weeks[0] = [];
+    const weeks: { date: Date; key: string; count: number; created: number; reviewed: number }[][] =
+      [];
+    let currentWeek: (typeof weeks)[0] = [];
 
     for (const day of days) {
-      const key = format(day, 'yyyy-MM-dd');
+      const key = format(day, "yyyy-MM-dd");
       const entry = data.get(key);
       const created = entry?.created ?? 0;
       const reviewed = entry?.reviewed ?? 0;
@@ -72,7 +79,7 @@ export function ContributionGraph({ data, startDate, endDate, selectedDay, onDay
       const firstDay = weeks[w]![0]!;
       const month = firstDay.date.getMonth();
       if (month !== lastMonth) {
-        monthLabels.push({ label: format(firstDay.date, 'MMM'), x: w * (clamped + GAP) });
+        monthLabels.push({ label: format(firstDay.date, "MMM"), x: w * (clamped + GAP) });
         lastMonth = month;
       }
     }
@@ -80,7 +87,7 @@ export function ContributionGraph({ data, startDate, endDate, selectedDay, onDay
     return {
       grid: weeks,
       months: monthLabels,
-      dateRange: `${format(start, 'MMM d, yyyy')} — ${format(end, 'MMM d, yyyy')}`,
+      dateRange: `${format(start, "MMM d, yyyy")} — ${format(end, "MMM d, yyyy")}`,
       cellSize: clamped,
     };
   }, [data, startDate, endDate, containerWidth]);
@@ -104,17 +111,18 @@ export function ContributionGraph({ data, startDate, endDate, selectedDay, onDay
     <div ref={containerRef}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-          <span><strong className="text-zinc-700 dark:text-zinc-200">{totalCreated}</strong> PRs created</span>
-          <span><strong className="text-zinc-700 dark:text-zinc-200">{totalReviewed}</strong> PRs reviewed</span>
+          <span>
+            <strong className="text-zinc-700 dark:text-zinc-200">{totalCreated}</strong> PRs created
+          </span>
+          <span>
+            <strong className="text-zinc-700 dark:text-zinc-200">{totalReviewed}</strong> PRs
+            reviewed
+          </span>
         </div>
         <span className="text-[11px] text-zinc-400">{dateRange}</span>
       </div>
       <div className="overflow-x-auto flex justify-center">
-        <svg
-          width={svgWidth}
-          height={svgHeight}
-          className="cursor-pointer"
-        >
+        <svg width={svgWidth} height={svgHeight} className="cursor-pointer">
           {months.map((m, i) => (
             <text
               key={i}
@@ -127,7 +135,7 @@ export function ContributionGraph({ data, startDate, endDate, selectedDay, onDay
               {m.label}
             </text>
           ))}
-          {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
+          {["", "Mon", "", "Wed", "", "Fri", ""].map((label, i) => (
             <text
               key={i}
               x={0}
@@ -152,15 +160,16 @@ export function ContributionGraph({ data, startDate, endDate, selectedDay, onDay
                     height={cellSize}
                     rx={2}
                     fill={getIntensityColor(day.count, isDark)}
-                    stroke={isSelected ? '#0078d4' : 'none'}
+                    stroke={isSelected ? "#0078d4" : "none"}
                     strokeWidth={isSelected ? 2 : 0}
                   />
                   <title>
-                    {format(day.date, 'MMM d, yyyy')}: {day.created} created, {day.reviewed} reviewed
+                    {format(day.date, "MMM d, yyyy")}: {day.created} created, {day.reviewed}{" "}
+                    reviewed
                   </title>
                 </g>
               );
-            })
+            }),
           )}
         </svg>
       </div>

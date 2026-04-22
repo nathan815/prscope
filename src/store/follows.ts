@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { FollowedUser } from '../types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { FollowedUser } from "../types";
 
 interface FollowsState {
   users: FollowedUser[];
@@ -18,8 +18,7 @@ export const useFollowsStore = create<FollowsState>()(
         set((s) => ({
           users: s.users.some((u) => u.id === user.id) ? s.users : [...s.users, user],
         })),
-      removeUser: (userId) =>
-        set((s) => ({ users: s.users.filter((u) => u.id !== userId) })),
+      removeUser: (userId) => set((s) => ({ users: s.users.filter((u) => u.id !== userId) })),
       isFollowing: (userId) => get().users.some((u) => u.id === userId),
       toggleUser: (user) => {
         if (get().isFollowing(user.id)) {
@@ -29,6 +28,6 @@ export const useFollowsStore = create<FollowsState>()(
         }
       },
     }),
-    { name: 'prscope-follows' }
-  )
+    { name: "prscope-follows" },
+  ),
 );

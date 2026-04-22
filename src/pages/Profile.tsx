@@ -46,12 +46,9 @@ function getTimeRangeBounds(range: TimeRange): {
   maxTime?: string;
 } {
   const now = new Date();
-  if (range === "last-1y")
-    return { minTime: startOfDay(subYears(now, 1)).toISOString() };
-  if (range === "last-6m")
-    return { minTime: startOfDay(subMonths(now, 6)).toISOString() };
-  if (range === "last-1m")
-    return { minTime: startOfDay(subMonths(now, 1)).toISOString() };
+  if (range === "last-1y") return { minTime: startOfDay(subYears(now, 1)).toISOString() };
+  if (range === "last-6m") return { minTime: startOfDay(subMonths(now, 6)).toISOString() };
+  if (range === "last-1m") return { minTime: startOfDay(subMonths(now, 1)).toISOString() };
   const year = parseInt(range);
   return {
     minTime: startOfYear(new Date(year, 0, 1)).toISOString(),
@@ -86,9 +83,7 @@ export function Profile() {
   const fetchLimit = Number(searchParams.get("limit")) || 500;
   const selectedDay = searchParams.get("day") || null;
   const reviewAnalysisLimit = Number(searchParams.get("rlimit")) || 50;
-  const [activityRange, setActivityRange] = useState<
-    "7d" | "30d" | "90d" | "1y"
-  >("30d");
+  const [activityRange, setActivityRange] = useState<"7d" | "30d" | "90d" | "1y">("30d");
   const [reviewRepoFilter, setReviewRepoFilter] = useState<string | null>(null);
   const [reviewHistoryVisible, setReviewHistoryVisible] = useState(100);
 
@@ -107,14 +102,13 @@ export function Profile() {
   };
 
   const bounds = useMemo(() => getTimeRangeBounds(timeRange), [timeRange]);
-  const { prs, topRepos, contributionData, reviewImpact, isConfigured } =
-    useUserProfile(
-      userId,
-      fetchLimit,
-      bounds.minTime,
-      bounds.maxTime,
-      reviewAnalysisLimit,
-    );
+  const { prs, topRepos, contributionData, reviewImpact, isConfigured } = useUserProfile(
+    userId,
+    fetchLimit,
+    bounds.minTime,
+    bounds.maxTime,
+    reviewAnalysisLimit,
+  );
 
   const { data: userInfo } = useIdentity(userId);
   const userName = userInfo?.displayName ?? null;
@@ -125,9 +119,7 @@ export function Profile() {
     if (!prs.data) return null;
     const created = prs.data.created;
     const reviewed = prs.data.reviewed;
-    const completedPRs = created.filter(
-      (pr) => pr.status === "completed" && pr.closedDate,
-    );
+    const completedPRs = created.filter((pr) => pr.status === "completed" && pr.closedDate);
     const daysToMerge = completedPRs.map((pr) => {
       const created = new Date(pr.creationDate).getTime();
       const closed = new Date(pr.closedDate!).getTime();
@@ -135,9 +127,7 @@ export function Profile() {
     });
     daysToMerge.sort((a, b) => a - b);
     const medianDaysToMerge =
-      daysToMerge.length > 0
-        ? daysToMerge[Math.floor(daysToMerge.length / 2)]!
-        : 0;
+      daysToMerge.length > 0 ? daysToMerge[Math.floor(daysToMerge.length / 2)]! : 0;
 
     return {
       totalCreated: created.length,
@@ -186,18 +176,11 @@ export function Profile() {
       {/* Header */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-4">
-          <Avatar
-            name={userName ?? "?"}
-            imageUrl={userInfo?.imageUrl}
-            size={16}
-            hiRes
-          />
+          <Avatar name={userName ?? "?"} imageUrl={userInfo?.imageUrl} size={16} hiRes />
           <div>
             <h1 className="text-2xl font-bold">{userName ?? userId}</h1>
             {userInfo?.uniqueName && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {userInfo.uniqueName}
-              </p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{userInfo.uniqueName}</p>
             )}
           </div>
           <FollowButton userId={userId} userInfo={userInfo} />
@@ -227,8 +210,7 @@ export function Profile() {
 
         <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
           <p className="text-xs text-zinc-400">
-            {getTimeRangeLabel(timeRange)}, up to {fetchLimit.toLocaleString()}{" "}
-            PRs
+            {getTimeRangeLabel(timeRange)}, up to {fetchLimit.toLocaleString()} PRs
             {((stats?.totalCreated ?? 0) >= fetchLimit ||
               (stats?.totalReviewed ?? 0) >= fetchLimit) && (
               <span className="text-amber-500 ml-1">— limit reached</span>
@@ -332,9 +314,7 @@ export function Profile() {
               >
                 <div className="text-sm">
                   <span className="font-medium">{repo.name}</span>
-                  <span className="text-xs text-zinc-400 ml-2">
-                    {repo.project}
-                  </span>
+                  <span className="text-xs text-zinc-400 ml-2">{repo.project}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-zinc-500">
                   <span className="flex items-center gap-1">
@@ -367,23 +347,13 @@ export function Profile() {
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
             Review Impact
-            {reviewImpact.data?.analyzedFrom &&
-              reviewImpact.data?.analyzedTo && (
-                <span className="text-[11px] font-normal text-zinc-400 ml-1">
-                  {format(
-                    new Date(reviewImpact.data.analyzedFrom),
-                    "MMM d, yyyy",
-                  )}{" "}
-                  —{" "}
-                  {format(
-                    new Date(reviewImpact.data.analyzedTo),
-                    "MMM d, yyyy",
-                  )}
-                  <span className="ml-1">
-                    ({reviewImpact.data.totalPrsAnalyzed} PRs)
-                  </span>
-                </span>
-              )}
+            {reviewImpact.data?.analyzedFrom && reviewImpact.data?.analyzedTo && (
+              <span className="text-[11px] font-normal text-zinc-400 ml-1">
+                {format(new Date(reviewImpact.data.analyzedFrom), "MMM d, yyyy")} —{" "}
+                {format(new Date(reviewImpact.data.analyzedTo), "MMM d, yyyy")}
+                <span className="ml-1">({reviewImpact.data.totalPrsAnalyzed} PRs)</span>
+              </span>
+            )}
           </h2>
           <div className="flex items-center gap-2">
             {(reviewImpact.data?.repoBreakdown ?? []).length > 1 && (
@@ -447,11 +417,7 @@ export function Profile() {
                   <StatCard label="Comments Left" value={filteredComments} />
                   <StatCard
                     label="Avg Comments Per PR"
-                    value={
-                      filteredPrs > 0
-                        ? (filteredComments / filteredPrs).toFixed(1)
-                        : "0"
-                    }
+                    value={filteredPrs > 0 ? (filteredComments / filteredPrs).toFixed(1) : "0"}
                   />
                   <StatCard
                     label="PRs with Comments"
@@ -497,9 +463,7 @@ export function Profile() {
                         >
                           <div>
                             <span className="font-medium">{repo.name}</span>
-                            <span className="text-xs text-zinc-400 ml-2">
-                              {repo.project}
-                            </span>
+                            <span className="text-xs text-zinc-400 ml-2">{repo.project}</span>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-zinc-500">
                             <span>{repo.prsReviewed} PRs</span>
@@ -524,75 +488,57 @@ export function Profile() {
                         {data.prsWithVoteChanges > 0 && (
                           <span className="ml-2 text-ado-blue normal-case font-normal">
                             {data.prsWithVoteChanges} PR
-                            {data.prsWithVoteChanges > 1 ? "s" : ""} with vote
-                            changes
+                            {data.prsWithVoteChanges > 1 ? "s" : ""} with vote changes
                           </span>
                         )}
                       </h3>
                     </div>
                     <div className="space-y-1 max-h-80 overflow-y-auto">
-                      {data.reviewHistory
-                        .slice(0, reviewHistoryVisible)
-                        .map((event, i) => {
-                          const url = buildPrWebUrl(
-                            useSettingsStore.getState().organization,
-                            event.project,
-                            event.repo,
-                            event.prId,
-                          );
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between py-1 text-xs"
-                            >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                {event.type === "vote" ? (
-                                  <VoteLabel vote={event.vote} />
-                                ) : (
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-ado-blue/10 text-ado-blue">
-                                    {event.count === 1
-                                      ? "commented"
-                                      : `${event.count} comments`}
-                                  </span>
-                                )}
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 min-w-0 hover:text-ado-blue transition-colors"
-                                >
-                                  <span className="text-zinc-400">
-                                    #{event.prId}
-                                  </span>
-                                  <span className="truncate">
-                                    {event.prTitle}
-                                  </span>
-                                </a>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0 ml-2 text-zinc-400">
-                                <span>{event.repo}</span>
-                                <span
-                                  title={format(
-                                    new Date(event.date),
-                                    "MMM d, yyyy h:mm a",
-                                  )}
-                                >
-                                  {formatDistanceToNow(new Date(event.date), {
-                                    addSuffix: true,
-                                  })}
+                      {data.reviewHistory.slice(0, reviewHistoryVisible).map((event, i) => {
+                        const url = buildPrWebUrl(
+                          useSettingsStore.getState().organization,
+                          event.project,
+                          event.repo,
+                          event.prId,
+                        );
+                        return (
+                          <div key={i} className="flex items-center justify-between py-1 text-xs">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              {event.type === "vote" ? (
+                                <VoteLabel vote={event.vote} />
+                              ) : (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 bg-ado-blue/10 text-ado-blue">
+                                  {event.count === 1 ? "commented" : `${event.count} comments`}
                                 </span>
-                              </div>
+                              )}
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 min-w-0 hover:text-ado-blue transition-colors"
+                              >
+                                <span className="text-zinc-400">#{event.prId}</span>
+                                <span className="truncate">{event.prTitle}</span>
+                              </a>
                             </div>
-                          );
-                        })}
+                            <div className="flex items-center gap-2 flex-shrink-0 ml-2 text-zinc-400">
+                              <span>{event.repo}</span>
+                              <span title={format(new Date(event.date), "MMM d, yyyy h:mm a")}>
+                                {formatDistanceToNow(new Date(event.date), {
+                                  addSuffix: true,
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                     {data.reviewHistory.length > reviewHistoryVisible && (
                       <button
                         onClick={() => setReviewHistoryVisible((v) => v + 100)}
                         className="mt-2 text-xs text-ado-blue hover:underline"
                       >
-                        View more events (
-                        {data.reviewHistory.length - reviewHistoryVisible}{" "}
+                        View more events ({data.reviewHistory.length - reviewHistoryVisible}{" "}
                         remaining)
                       </button>
                     )}
@@ -601,11 +547,9 @@ export function Profile() {
               </div>
             );
           })()}
-        {!reviewImpact.isLoading &&
-          !reviewImpact.data &&
-          !reviewImpact.error && (
-            <p className="text-sm text-zinc-400">No review activity found.</p>
-          )}
+        {!reviewImpact.isLoading && !reviewImpact.data && !reviewImpact.error && (
+          <p className="text-sm text-zinc-400">No review activity found.</p>
+        )}
       </div>
 
       {/* AI Summary */}
@@ -642,9 +586,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-3 text-center">
       <div className="text-xl font-bold">{value}</div>
-      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-        {label}
-      </div>
+      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{label}</div>
     </div>
   );
 }
@@ -723,8 +665,7 @@ function ActivityRange({
   pageTimeRange: TimeRange;
 }) {
   const isDay = selectedDay !== null;
-  const showSubRanges =
-    pageTimeRange === "last-1y" || pageTimeRange === "last-6m";
+  const showSubRanges = pageTimeRange === "last-1y" || pageTimeRange === "last-6m";
 
   const heading = isDay
     ? `Activity on ${format(new Date(selectedDay + "T00:00:00"), "MMM d, yyyy")}`
@@ -765,10 +706,7 @@ function ActivityRange({
           return isAfter(d, dayStart) && d <= dayEnd;
         }
         if (showSubRanges) {
-          return isAfter(
-            new Date(pr.closedDate!),
-            getRangeCutoff(activityRange),
-          );
+          return isAfter(new Date(pr.closedDate!), getRangeCutoff(activityRange));
         }
         return true;
       })
@@ -794,19 +732,9 @@ function ActivityRange({
     return [...filteredCreated, ...completedEvents, ...filteredReviewed].sort(
       (a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime(),
     );
-  }, [
-    created,
-    reviewed,
-    selectedDay,
-    isDay,
-    activityRange,
-    showSubRanges,
-    userId,
-  ]);
+  }, [created, reviewed, selectedDay, isDay, activityRange, showSubRanges, userId]);
 
-  const createdCount = mergedActivity.filter(
-    (a) => a.label === "created",
-  ).length;
+  const createdCount = mergedActivity.filter((a) => a.label === "created").length;
   const reviewedCount = mergedActivity.length - createdCount;
 
   return (
@@ -828,21 +756,21 @@ function ActivityRange({
           )}
           {!isDay && showSubRanges && (
             <div className="flex gap-1">
-              {RANGE_OPTIONS.filter(
-                (r) => !(pageTimeRange === "last-6m" && r.value === "1y"),
-              ).map((r) => (
-                <button
-                  key={r.value}
-                  onClick={() => setActivityRange(r.value)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                    activityRange === r.value
-                      ? "bg-ado-blue text-white"
-                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
+              {RANGE_OPTIONS.filter((r) => !(pageTimeRange === "last-6m" && r.value === "1y")).map(
+                (r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setActivityRange(r.value)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                      activityRange === r.value
+                        ? "bg-ado-blue text-white"
+                        : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ),
+              )}
             </div>
           )}
         </div>
@@ -867,23 +795,13 @@ function ActivityRange({
       )}
 
       {mergedActivity.length === 0 && (
-        <p className="text-sm text-zinc-400 text-center py-4">
-          No activity in this period.
-        </p>
+        <p className="text-sm text-zinc-400 text-center py-4">No activity in this period.</p>
       )}
     </div>
   );
 }
 
-function MiniPrRow({
-  pr,
-  label,
-  date,
-}: {
-  pr: PRItem;
-  label: string;
-  date: string;
-}) {
+function MiniPrRow({ pr, label, date }: { pr: PRItem; label: string; date: string }) {
   const org = useSettingsStore((s) => s.organization);
   const webUrl = buildPrWebUrl(
     org,
@@ -953,9 +871,7 @@ function VoteLabel({ vote }: { vote: number }) {
             ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
             : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500";
   return (
-    <span
-      className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${color}`}
-    >
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${color}`}>
       {label}
     </span>
   );
