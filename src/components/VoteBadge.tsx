@@ -6,36 +6,36 @@ function getVoteInfo(vote: number) {
       return {
         label: "Approved",
         icon: Check,
-        iconColor: "text-green-600",
-        bg: "bg-green-100 dark:bg-green-900/40",
+        iconColor: "text-white dark:text-green-950",
+        bg: "bg-green-600 dark:bg-green-500",
       };
     case 5:
       return {
         label: "Approved with suggestions",
         icon: Check,
-        iconColor: "text-green-500",
-        bg: "bg-green-50 dark:bg-green-900/20",
+        iconColor: "text-white dark:text-green-950",
+        bg: "bg-green-500 dark:bg-green-400",
       };
     case -5:
       return {
         label: "Waiting for author",
         icon: Clock,
-        iconColor: "text-orange-500",
-        bg: "bg-orange-50 dark:bg-orange-900/20",
+        iconColor: "text-white",
+        bg: "bg-orange-500",
       };
     case -10:
       return {
         label: "Rejected",
         icon: X,
-        iconColor: "text-red-600",
-        bg: "bg-red-100 dark:bg-red-900/40",
+        iconColor: "text-white",
+        bg: "bg-red-600",
       };
     default:
       return {
         label: "No response",
         icon: Minus,
-        iconColor: "text-zinc-400",
-        bg: "bg-zinc-100 dark:bg-zinc-800",
+        iconColor: "text-zinc-500",
+        bg: "bg-zinc-200 dark:bg-zinc-700",
       };
   }
 }

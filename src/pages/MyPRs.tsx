@@ -148,13 +148,31 @@ export function MyPRs() {
     });
   }, [allCreated, allAssigned]);
 
+  const sortByLatest = (
+    a: { closedDate?: string; creationDate: string },
+    b: { closedDate?: string; creationDate: string },
+  ) => {
+    const aTime = new Date(a.closedDate ?? a.creationDate).getTime();
+    const bTime = new Date(b.closedDate ?? b.creationDate).getTime();
+    return bTime - aTime;
+  };
+
   const reviewingPrs = useMemo(() => {
-    return allFetchedPrs.filter(
-      (pr) =>
-        pr.status !== "completed" &&
-        reviewingPrIds.has(prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId)),
-    );
-  }, [allFetchedPrs, reviewingPrIds]);
+    return allFetchedPrs
+      .filter((pr) => {
+        if (pr.status === "completed") return false;
+        if (
+          !reviewingPrIds.has(
+            prKey(pr.repository.project.name, pr.repository.name, pr.pullRequestId),
+          )
+        )
+          return false;
+        const myVote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
+        if (myVote !== 0) return false;
+        return true;
+      })
+      .sort(sortByLatest);
+  }, [allFetchedPrs, reviewingPrIds, userId]);
 
   const reviewedPrs = useMemo(() => {
     const voted = (allAssigned ?? []).filter((pr) => {
@@ -168,9 +186,7 @@ export function MyPRs() {
     );
     const seen = new Set(voted.map((pr) => pr.pullRequestId));
     const merged = [...voted, ...completedReviewing.filter((pr) => !seen.has(pr.pullRequestId))];
-    return merged.sort(
-      (a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime(),
-    );
+    return merged.sort(sortByLatest);
   }, [allAssigned, allFetchedPrs, reviewingPrIds, userId]);
 
   const allPrs =

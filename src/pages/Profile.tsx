@@ -842,7 +842,11 @@ function MiniPrRow({ pr, label, date }: { pr: PRItem; label: string; date: strin
         <span>{pr.targetRefName.replace("refs/heads/", "")}</span>
         <span>·</span>
         <span title={format(new Date(date), "MMM d, yyyy h:mm a")}>
-          {formatDistanceToNow(new Date(date), { addSuffix: true })}
+          {label === "created"
+            ? formatDistanceToNow(new Date(date), { addSuffix: true })
+            : pr.closedDate
+              ? `PR ${pr.status} ${formatDistanceToNow(new Date(pr.closedDate), { addSuffix: true })}`
+              : `PR created ${formatDistanceToNow(new Date(pr.creationDate), { addSuffix: true })}`}
         </span>
       </div>
     </a>

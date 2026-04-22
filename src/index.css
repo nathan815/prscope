@@ -37,6 +37,10 @@ body {
   min-height: 100vh;
 }
 
+.dark {
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     --color-surface: #1b1a19;
