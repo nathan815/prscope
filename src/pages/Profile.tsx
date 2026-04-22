@@ -747,6 +747,26 @@ function ActivityRange({
       sortDate: pr.creationDate,
     }));
 
+    const completedEvents = created
+      .filter((pr) => pr.status === "completed" && pr.closedDate)
+      .filter((pr) => {
+        if (isDay) {
+          const dayStart = startOfDay(new Date(selectedDay + "T00:00:00"));
+          const dayEnd = endOfDay(dayStart);
+          const d = new Date(pr.closedDate!);
+          return isAfter(d, dayStart) && d <= dayEnd;
+        }
+        if (showSubRanges) {
+          return isAfter(new Date(pr.closedDate!), getRangeCutoff(activityRange));
+        }
+        return true;
+      })
+      .map((pr) => ({
+        pr,
+        label: "completed" as const,
+        sortDate: pr.closedDate!,
+      }));
+
     const filteredReviewed = filterByTime(reviewed).map((pr) => {
       const vote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
       const label =
@@ -760,7 +780,7 @@ function ActivityRange({
       return { pr, label, sortDate: pr.closedDate ?? pr.creationDate };
     });
 
-    return [...filteredCreated, ...filteredReviewed].sort(
+    return [...filteredCreated, ...completedEvents, ...filteredReviewed].sort(
       (a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime(),
     );
   }, [
@@ -829,6 +849,7 @@ function ActivityRange({
               key={`${item.label}-${item.pr.pullRequestId}`}
               pr={item.pr}
               label={item.label}
+              date={item.sortDate}
             />
           ))}
         </div>
@@ -843,7 +864,15 @@ function ActivityRange({
   );
 }
 
-function MiniPrRow({ pr, label }: { pr: PRItem; label: string }) {
+function MiniPrRow({
+  pr,
+  label,
+  date,
+}: {
+  pr: PRItem;
+  label: string;
+  date: string;
+}) {
   const org = useSettingsStore((s) => s.organization);
   const webUrl = buildPrWebUrl(
     org,
@@ -857,28 +886,34 @@ function MiniPrRow({ pr, label }: { pr: PRItem; label: string }) {
       href={webUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-sm"
+      className="block px-3 py-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex items-center gap-2 min-w-0">
         <span
           className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${
             label === "created"
               ? "bg-ado-blue/10 text-ado-blue"
-              : label === "approved" || label === "approved w/ suggestions"
+              : label === "completed"
                 ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                : label === "rejected"
-                  ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                  : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
+                : label === "approved" || label === "approved w/ suggestions"
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                  : label === "rejected"
+                    ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                    : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
           }`}
         >
           {label}
         </span>
-        <span className="text-zinc-400">#{pr.pullRequestId}</span>
-        <span className="truncate">{pr.title}</span>
+        <span className="text-xs text-zinc-400">#{pr.pullRequestId}</span>
+        <span className="text-sm truncate">{pr.title}</span>
       </div>
-      <span className="text-xs text-zinc-400 flex-shrink-0 ml-2">
-        {pr.repository.name}
-      </span>
+      <div className="flex items-center gap-2 mt-0.5 ml-[calc(theme(spacing.1.5)*2+theme(spacing.2))] text-[11px] text-zinc-400">
+        <span>{pr.repository.name}</span>
+        <span>·</span>
+        <span title={format(new Date(date), "MMM d, yyyy h:mm a")}>
+          {formatDistanceToNow(new Date(date), { addSuffix: true })}
+        </span>
+      </div>
     </a>
   );
 }
