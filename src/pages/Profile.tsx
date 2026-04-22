@@ -125,15 +125,26 @@ export function Profile() {
     if (!prs.data) return null;
     const created = prs.data.created;
     const reviewed = prs.data.reviewed;
-    const completedOwn = created.filter(
-      (pr) => pr.status === "completed",
-    ).length;
+    const completedPRs = created.filter(
+      (pr) => pr.status === "completed" && pr.closedDate,
+    );
+    const daysToMerge = completedPRs.map((pr) => {
+      const created = new Date(pr.creationDate).getTime();
+      const closed = new Date(pr.closedDate!).getTime();
+      return (closed - created) / (1000 * 60 * 60 * 24);
+    });
+    daysToMerge.sort((a, b) => a - b);
+    const medianDaysToMerge =
+      daysToMerge.length > 0
+        ? daysToMerge[Math.floor(daysToMerge.length / 2)]!
+        : 0;
+
     return {
       totalCreated: created.length,
       totalReviewed: reviewed.length,
-      completedOwn,
+      completedOwn: completedPRs.length,
       activeOwn: created.filter((pr) => pr.status === "active").length,
-      completionRate: created.length > 0 ? completedOwn / created.length : 0,
+      medianDaysToMerge,
     };
   }, [prs.data]);
 
@@ -175,7 +186,12 @@ export function Profile() {
       {/* Header */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-4">
-          <Avatar name={userName ?? "?"} imageUrl={userInfo?.imageUrl} size={16} hiRes />
+          <Avatar
+            name={userName ?? "?"}
+            imageUrl={userInfo?.imageUrl}
+            size={16}
+            hiRes
+          />
           <div>
             <h1 className="text-2xl font-bold">{userName ?? userId}</h1>
             {userInfo?.uniqueName && (
@@ -193,8 +209,12 @@ export function Profile() {
             <StatCard label="PRs Reviewed" value={stats.totalReviewed} />
             <StatCard label="Active PRs" value={stats.activeOwn} />
             <StatCard
-              label="Completion Rate"
-              value={`${Math.round(stats.completionRate * 100)}%`}
+              label="Median Merge Time"
+              value={
+                stats.medianDaysToMerge < 1
+                  ? `${Math.round(stats.medianDaysToMerge * 24)}h`
+                  : `${Math.round(stats.medianDaysToMerge)}d`
+              }
             />
           </div>
         ) : (
@@ -434,8 +454,8 @@ export function Profile() {
                     }
                   />
                   <StatCard
-                    label="Completion Rate"
-                    value={`${Math.round(data.completionRate * 100)}%`}
+                    label="PRs with Comments"
+                    value={`${data.prsWithComments} / ${data.totalPrsAnalyzed}`}
                   />
                 </div>
                 <div className="flex items-center gap-3 flex-wrap text-xs text-zinc-500 dark:text-zinc-400 mb-4">
@@ -745,7 +765,10 @@ function ActivityRange({
           return isAfter(d, dayStart) && d <= dayEnd;
         }
         if (showSubRanges) {
-          return isAfter(new Date(pr.closedDate!), getRangeCutoff(activityRange));
+          return isAfter(
+            new Date(pr.closedDate!),
+            getRangeCutoff(activityRange),
+          );
         }
         return true;
       })
