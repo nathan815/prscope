@@ -32,15 +32,17 @@ export function Sidebar() {
   return (
     <aside className="w-56 flex-shrink-0 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center gap-2">
-          <Telescope className="w-6 h-6 text-ado-blue" />
-          <span className="font-bold text-lg tracking-tight">PRScope</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Telescope className="w-6 h-6 text-ado-blue" />
+            <span className="font-bold text-lg tracking-tight">PRScope</span>
+          </div>
+          {organization && (
+            <span className="text-[11px] text-zinc-300 dark:text-zinc-600 truncate max-w-20">
+              {organization}
+            </span>
+          )}
         </div>
-        {organization && (
-          <p className="text-[11px] text-zinc-400 mt-1 truncate">
-            {organization}
-          </p>
-        )}
       </div>
 
       <nav className="flex-1 p-2 space-y-1">
@@ -67,7 +69,17 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+      <a
+        href="https://github.com/nathan815/prscope"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 mx-4 mb-3 py-1.5 text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors border border-zinc-200 dark:border-zinc-800 rounded-lg hover:border-zinc-300 dark:hover:border-zinc-700"
+      >
+        <Github className="w-3.5 h-3.5" />
+        Star on GitHub
+      </a>
+
+      <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800">
         {displayName && (
           <div className="flex items-center gap-2">
             {userIdentity?.imageUrl ? (
@@ -89,15 +101,6 @@ export function Sidebar() {
             </p>
           </div>
         )}
-        <a
-          href="https://github.com/nathan815/prscope"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-        >
-          <Github className="w-3.5 h-3.5" />
-          GitHub
-        </a>
       </div>
     </aside>
   );

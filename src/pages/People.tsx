@@ -4,6 +4,7 @@ import { Users, Search, Loader2, UserPlus, UserMinus, X } from 'lucide-react';
 import { searchIdentities } from '../api/client';
 import { useFollowsStore } from '../store/follows';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { Avatar } from '../components/Avatar';
 
 export function People() {
   usePageTitle('People');
@@ -109,13 +110,7 @@ function PersonRow({ user, isFollowing, onToggleFollow }: {
   return (
     <div className="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-white dark:hover:bg-zinc-900 transition-colors">
       <Link to={`/profile/${user.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:text-ado-blue transition-colors">
-        {user.imageUrl ? (
-          <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xs font-medium flex-shrink-0">
-            {user.displayName.charAt(0)}
-          </div>
-        )}
+        <Avatar name={user.displayName} imageUrl={user.imageUrl} size={8} />
         <div className="min-w-0">
           <span className="text-sm font-medium block truncate">{user.displayName}</span>
           {alias && <span className="text-xs text-zinc-400 block truncate">{alias}</span>}

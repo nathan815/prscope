@@ -33,6 +33,7 @@ import { Skeleton, SkeletonCard } from "../components/Skeleton";
 import { PRCard } from "../components/PRCard";
 import { useFollowsStore } from "../store/follows";
 import { useSettingsStore } from "../store/settings";
+import { Avatar } from "../components/Avatar";
 import { buildPrWebUrl } from "../api/client";
 import { UserAiSummary } from "../components/UserAiSummary";
 
@@ -174,20 +175,7 @@ export function Profile() {
       {/* Header */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-4">
-          {userInfo?.imageUrl ? (
-            <img
-              src={`${userInfo.imageUrl}${userInfo.imageUrl.includes("?") ? "&" : "?"}size=4`}
-              alt={userName ?? ""}
-              className="w-16 h-16 rounded-full"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-ado-blue/10 flex items-center justify-center text-2xl font-bold text-ado-blue">
-              {(userName ?? "?").charAt(0)}
-            </div>
-          )}
+          <Avatar name={userName ?? "?"} imageUrl={userInfo?.imageUrl} size={16} hiRes />
           <div>
             <h1 className="text-2xl font-bold">{userName ?? userId}</h1>
             {userInfo?.uniqueName && (

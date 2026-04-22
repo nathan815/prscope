@@ -235,17 +235,15 @@ export async function searchIdentities(query: string) {
       id: i.localId ?? i.originId,
       displayName: i.displayName ?? '',
       uniqueName: i.signInAddress ?? i.mail ?? i.samAccountName ?? '',
-      imageUrl: i.subjectDescriptor
-        ? buildAvatarUrl(i.subjectDescriptor)
-        : '',
+      imageUrl: i.localId ? buildIdentityImageUrl(i.localId) : '',
     }));
 }
 
-function buildAvatarUrl(subjectDescriptor: string): string {
+function buildIdentityImageUrl(identityId: string): string {
   if (cachedMode === 'oauth' || cachedMode === 'az-cli') {
-    return `https://dev.azure.com/${cachedOrg}/_apis/GraphProfile/MemberAvatars/${subjectDescriptor}`;
+    return `https://dev.azure.com/${cachedOrg}/_api/_common/identityImage?id=${identityId}`;
   }
-  return `/api/ado/${cachedOrg}/_apis/GraphProfile/MemberAvatars/${subjectDescriptor}`;
+  return `/api/ado/${cachedOrg}/_api/_common/identityImage?id=${identityId}`;
 }
 
 export function buildPrWebUrl(org: string, projectName: string, repoName: string, prId: number) {
