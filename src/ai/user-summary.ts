@@ -1,5 +1,6 @@
 import { getCached, setCache } from '../api/cache';
 import { callLLM } from '../api/llm';
+import { computeReviewThoroughness } from './review-thoroughness';
 
 export interface AISummaryInput {
   prs: { id: number; title: string; repo: string; creationDate: string; status: string }[];
@@ -12,10 +13,10 @@ export interface AISummaryResult {
   summary: string;
   input: AISummaryInput;
   generatedFor: { timeRange: string; fetchLimit: number };
+  reviewThoroughness: number;
   insights: {
     topAreas: { name: string; percentage: number }[];
     workStyle: { created: number; reviewed: number };
-    reviewThoroughness: number;
     strengths: string[];
     keyCollaborators: string[];
   };
@@ -61,6 +62,7 @@ async function saveSummary(userId: string, timeRange: string, fetchLimit: number
 }
 
 export interface ReviewImpactData {
+  totalPrsAnalyzed: number;
   totalComments: number;
   avgCommentsPerPr: number;
   approved?: number;
@@ -167,7 +169,6 @@ Respond with ONLY valid JSON in this exact format (no markdown, no code fences):
   "insights": {
     "topAreas": [{"name": "area name", "percentage": 40}, ...],
     "workStyle": {"created": 60, "reviewed": 40},
-    "reviewThoroughness": 3.5,
     "strengths": ["strength 1", "strength 2", "strength 3"],
     "keyCollaborators": ["Name 1", "Name 2"]
   }
@@ -175,7 +176,6 @@ Respond with ONLY valid JSON in this exact format (no markdown, no code fences):
 
 For topAreas: identify 3-6 technical areas/domains from the PR titles and repos, with percentage of focus (must sum to ~100).
 For workStyle: percentage split between creating PRs vs reviewing others' PRs.
-For reviewThoroughness: score 1-5 based on comment volume and detail (1=rubber stamp, 5=extremely thorough).
 For strengths: 3-5 short phrases describing their engineering strengths.
 For keyCollaborators: names of people they frequently work with (from PR authors they review or reviewers on their PRs). Empty array if not enough data.
 
@@ -223,10 +223,10 @@ export async function generateUserSummary(
     summary: obj.summary,
     input: inputData,
     generatedFor: { timeRange: cacheId.timeRange, fetchLimit: cacheId.fetchLimit },
+    reviewThoroughness: context.reviewImpact ? computeReviewThoroughness(context.reviewImpact) : 0,
     insights: {
       topAreas: Array.isArray(ins.topAreas) ? ins.topAreas : [],
       workStyle: isWorkStyle(ins.workStyle) ? ins.workStyle : { created: 50, reviewed: 50 },
-      reviewThoroughness: typeof ins.reviewThoroughness === 'number' ? ins.reviewThoroughness : 0,
       strengths: Array.isArray(ins.strengths) ? ins.strengths : [],
       keyCollaborators: Array.isArray(ins.keyCollaborators) ? ins.keyCollaborators : [],
     },

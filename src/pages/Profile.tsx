@@ -910,6 +910,8 @@ function MiniPrRow({
       <div className="flex items-center gap-2 mt-0.5 ml-[calc(theme(spacing.1.5)*2+theme(spacing.2))] text-[11px] text-zinc-400">
         <span>{pr.repository.name}</span>
         <span>·</span>
+        <span>{pr.targetRefName.replace("refs/heads/", "")}</span>
+        <span>·</span>
         <span title={format(new Date(date), "MMM d, yyyy h:mm a")}>
           {formatDistanceToNow(new Date(date), { addSuffix: true })}
         </span>

@@ -7,6 +7,7 @@ import {
   type AISummaryResult,
   type AISummaryInput,
 } from "../ai/user-summary";
+import { computeReviewThoroughness } from "../ai/review-thoroughness";
 
 interface PRItem {
   pullRequestId: number;
@@ -24,6 +25,7 @@ interface UserAiSummaryProps {
   topRepos: { name: string; project: string; created: number; reviewed: number }[] | undefined;
   reviewImpact:
     | {
+        totalPrsAnalyzed: number;
         totalComments: number;
         avgCommentsPerPr: number;
         approved?: number;
@@ -107,6 +109,8 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName, userImage
   }, [prs, topRepos, reviewImpact, userId, timeRange, fetchLimit]);
 
   const ins = result?.insights;
+  const thoroughness = result?.reviewThoroughness
+    ?? (reviewImpact ? computeReviewThoroughness(reviewImpact) : 0);
 
   const [copied, setCopied] = useState(false);
   const copyAsMarkdown = () => {
@@ -125,9 +129,9 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName, userImage
         lines.push(`- Reviewing: ${ins.workStyle.reviewed}%`);
         lines.push('');
       }
-      if (ins.reviewThoroughness > 0) {
+      if (thoroughness > 0) {
         lines.push(`## Review Thoroughness\n`);
-        lines.push(`${ins.reviewThoroughness.toFixed(1)} / 5\n`);
+        lines.push(`${thoroughness.toFixed(1)} / 5\n`);
       }
       if (ins.strengths.length > 0) {
         lines.push('## Strengths\n');
@@ -259,15 +263,15 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName, userImage
                     <span className="text-xs text-green-600">{ins.workStyle.reviewed}% reviewing</span>
                   </div>
                 )}
-                {ins.reviewThoroughness > 0 && (
+                {thoroughness > 0 && (
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Thoroughness</h3>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <div key={n} className={`w-3 h-3 rounded-sm ${n <= Math.round(ins.reviewThoroughness) ? 'bg-ado-blue' : 'bg-zinc-200 dark:bg-zinc-700'}`} />
+                        <div key={n} className={`w-3 h-3 rounded-sm ${n <= Math.round(thoroughness) ? 'bg-ado-blue' : 'bg-zinc-200 dark:bg-zinc-700'}`} />
                       ))}
                     </div>
-                    <span className="text-xs text-zinc-400">{ins.reviewThoroughness.toFixed(1)}/5</span>
+                    <span className="text-xs text-zinc-400">{thoroughness.toFixed(1)}/5</span>
                   </div>
                 )}
               </div>
