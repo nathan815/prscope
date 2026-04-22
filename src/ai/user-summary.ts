@@ -60,15 +60,82 @@ async function saveSummary(userId: string, timeRange: string, fetchLimit: number
   await setCache(userCacheKey(userId), updated);
 }
 
+export interface ReviewImpactData {
+  totalComments: number;
+  avgCommentsPerPr: number;
+  approved?: number;
+  approvedWithSuggestions?: number;
+  approvalsWithComments?: number;
+  approvalsWithoutComments?: number;
+  rejected?: number;
+  waitingForAuthor?: number;
+  commentTexts?: { content: string; filePath: string | null }[];
+}
+
+export interface PRData {
+  pullRequestId: number;
+  title: string;
+  status: string;
+  sourceRefName: string;
+  targetRefName: string;
+  creationDate: string;
+  repository: { name: string };
+  reviewers: { displayName: string; vote: number }[];
+}
+
 export interface UserSummaryContext {
   userName: string;
-  topRepos: string;
-  recentPRs: string;
-  reviewPatterns: string;
-  sampleComments: string;
+  topRepos: { name: string; project: string; created: number; reviewed: number }[];
+  createdPRs: PRData[];
+  reviewedPRs: PRData[];
+  reviewImpact: ReviewImpactData | undefined;
+}
+
+function branchName(ref: string) {
+  return ref.replace("refs/heads/", "");
+}
+
+function voteLabel(v: number) {
+  return v >= 10 ? "approved" : v >= 5 ? "approved w/ suggestions" : v <= -10 ? "rejected" : v <= -5 ? "waiting" : null;
+}
+
+function formatPR(pr: PRData): string {
+  const votedReviewers = pr.reviewers
+    .filter((r) => r.vote !== 0)
+    .map((r) => `${r.displayName} (${voteLabel(r.vote)})`)
+    .join(", ");
+  const reviewerPart = votedReviewers ? ` | reviewers: ${votedReviewers}` : "";
+  return `- [${pr.repository.name}] ${pr.title} (${pr.status}) | ${branchName(pr.sourceRefName)} → ${branchName(pr.targetRefName)}${reviewerPart}`;
 }
 
 function buildPrompt(context: UserSummaryContext): string {
+  const topReposText = context.topRepos
+    .slice(0, 10)
+    .map((r) => `${r.name} (${r.project}): ${r.created} PRs created, ${r.reviewed} reviewed`)
+    .join("\n");
+
+  const createdText = context.createdPRs.map(formatPR).join("\n");
+  const reviewedText = context.reviewedPRs.map(formatPR).join("\n");
+  const allPRsText = `Created PRs (${context.createdPRs.length}):\n${createdText}\n\nReviewed PRs (${context.reviewedPRs.length}):\n${reviewedText}`;
+
+  let reviewPatternsText = "No review data available";
+  if (context.reviewImpact) {
+    const ri = context.reviewImpact;
+    reviewPatternsText = `Across recent reviewed PRs:
+- ${ri.approved ?? 0} approved, ${ri.approvedWithSuggestions ?? 0} approved w/ suggestions, ${ri.waitingForAuthor ?? 0} waiting for author, ${ri.rejected ?? 0} rejected
+- Of approvals: ${ri.approvalsWithComments ?? 0} had review comments before approving, ${ri.approvalsWithoutComments ?? 0} approved without comments
+- ${ri.totalComments} total comments, avg ${ri.avgCommentsPerPr.toFixed(1)} per PR`;
+  }
+
+  const comments = context.reviewImpact?.commentTexts ?? [];
+  const sampleCommentsText = comments
+    .slice(0, 50)
+    .map((c, i) => {
+      const path = c.filePath ? `[${c.filePath}] ` : "";
+      return `${i + 1}. ${path}${c.content}`;
+    })
+    .join("\n");
+
   return `You are analyzing a software engineer's Azure DevOps activity. Based on the data below, provide TWO things:
 
 1. A concise written summary (3-5 paragraphs) covering what they work on, their contribution patterns (compare created vs reviewed counts accurately — if reviewed > created, they skew toward reviewing, not authoring), review style, and any specializations.
@@ -81,16 +148,16 @@ function buildPrompt(context: UserSummaryContext): string {
 ${context.userName}
 
 ### Top Repositories
-${context.topRepos}
+${topReposText || "No repo data"}
 
-### Recent PRs Created
-${context.recentPRs}
+### PRs
+${allPRsText || "No PR data"}
 
 ### Review Patterns
-${context.reviewPatterns}
+${reviewPatternsText}
 
 ### Sample Review Comments
-${context.sampleComments}
+${sampleCommentsText || "No comments available"}
 
 ## Output Format
 

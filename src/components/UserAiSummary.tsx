@@ -5,7 +5,6 @@ import {
   generateUserSummary,
   getCachedSummary,
   type AISummaryResult,
-  type UserSummaryContext,
   type AISummaryInput,
 } from "../ai/user-summary";
 
@@ -29,6 +28,8 @@ interface UserAiSummaryProps {
         avgCommentsPerPr: number;
         approved?: number;
         approvedWithSuggestions?: number;
+        approvalsWithComments?: number;
+        approvalsWithoutComments?: number;
         rejected?: number;
         waitingForAuthor?: number;
         commentTexts?: { content: string; filePath: string | null }[];
@@ -39,60 +40,6 @@ interface UserAiSummaryProps {
   userId: string;
   timeRange: string;
   fetchLimit: number;
-}
-
-function branchName(ref: string) {
-  return ref.replace("refs/heads/", "");
-}
-
-function voteLabel(v: number) {
-  return v >= 10 ? "approved" : v >= 5 ? "approved w/ suggestions" : v <= -10 ? "rejected" : v <= -5 ? "waiting" : null;
-}
-
-function buildContext(
-  prs: { created: PRItem[]; reviewed: PRItem[] },
-  topRepos: UserAiSummaryProps["topRepos"],
-  reviewImpact: UserAiSummaryProps["reviewImpact"],
-  userName: string,
-): UserSummaryContext {
-  const topReposText = (topRepos ?? [])
-    .slice(0, 10)
-    .map((r) => `${r.name} (${r.project}): ${r.created} PRs created, ${r.reviewed} reviewed`)
-    .join("\n");
-
-  const formatPR = (pr: PRItem) => {
-    const votedReviewers = pr.reviewers
-      .filter((r) => r.vote !== 0)
-      .map((r) => `${r.displayName} (${voteLabel(r.vote)})`)
-      .join(", ");
-    const reviewerPart = votedReviewers ? ` | reviewers: ${votedReviewers}` : "";
-    return `- [${pr.repository.name}] ${pr.title} (${pr.status}) | ${branchName(pr.sourceRefName)} → ${branchName(pr.targetRefName)}${reviewerPart}`;
-  };
-
-  const createdPRs = prs.created.map(formatPR).join("\n");
-  const reviewedPRs = prs.reviewed.map(formatPR).join("\n");
-  const allPRsText = `Created PRs (${prs.created.length}):\n${createdPRs}\n\nReviewed PRs (${prs.reviewed.length}):\n${reviewedPRs}`;
-
-  const reviewPatterns = reviewImpact
-    ? `Across recent reviewed PRs:\n- ${reviewImpact.approved ?? 0} approved, ${reviewImpact.approvedWithSuggestions ?? 0} approved w/ suggestions, ${reviewImpact.waitingForAuthor ?? 0} waiting for author, ${reviewImpact.rejected ?? 0} rejected\n- ${reviewImpact.totalComments} total comments, avg ${reviewImpact.avgCommentsPerPr.toFixed(1)} per PR`
-    : "No review data available";
-
-  const comments = reviewImpact?.commentTexts ?? [];
-  const sampleComments = comments
-    .slice(0, 50)
-    .map((c, i) => {
-      const path = c.filePath ? `[${c.filePath}] ` : "";
-      return `${i + 1}. ${path}${c.content}`;
-    })
-    .join("\n");
-
-  return {
-    userName,
-    topRepos: topReposText || "No repo data",
-    recentPRs: allPRsText || "No PR data",
-    reviewPatterns,
-    sampleComments: sampleComments || "No comments available",
-  };
 }
 
 function buildInputPRs(prs: { created: PRItem[]; reviewed: PRItem[] }): AISummaryInput["prs"] {
@@ -141,7 +88,13 @@ export function UserAiSummary({ prs, topRepos, reviewImpact, userName, userImage
     setLoading(true);
     setError(null);
     try {
-      const ctx = buildContext(prs, topRepos, reviewImpact, userName ?? "Unknown");
+      const ctx = {
+        userName: userName ?? "Unknown",
+        topRepos: topRepos ?? [],
+        createdPRs: prs.created,
+        reviewedPRs: prs.reviewed,
+        reviewImpact,
+      };
       const inputPRs = buildInputPRs(prs);
       const r = await generateUserSummary(ctx, inputPRs, { userId, timeRange, fetchLimit }, skipCache);
       setResult(r);

@@ -126,6 +126,7 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
       const commentTexts: { content: string; filePath: string | null }[] = [];
       const threadStatuses = new Map<string, number>();
       const repoStats = new Map<string, { name: string; project: string; prsReviewed: number; comments: number }>();
+      const prsWithCommentSet = new Set<number>();
 
       type ReviewEvent = { type: 'vote'; prId: number; prTitle: string; repo: string; project: string; vote: number; date: string }
         | { type: 'commented'; prId: number; prTitle: string; repo: string; project: string; count: number; date: string };
@@ -141,6 +142,7 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
         repo.prsReviewed++;
 
         let prCommentCount = 0;
+        const prId = pr.pullRequestId;
         for (const thread of prThreads) {
           if (thread.status) {
             threadStatuses.set(thread.status, (threadStatuses.get(thread.status) ?? 0) + 1);
@@ -188,7 +190,10 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
             }
           }
         }
-        if (prCommentCount > 0) prsWithComments++;
+        if (prCommentCount > 0) {
+          prsWithComments++;
+          prsWithCommentSet.add(prId);
+        }
         repoStats.set(repoKey, repo);
       }
 
@@ -228,6 +233,16 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
       const analyzedFrom = dates[0] ?? '';
       const analyzedTo = dates[dates.length - 1] ?? '';
 
+      let approvalsWithComments = 0;
+      let approvalsWithoutComments = 0;
+      for (const pr of prs) {
+        const vote = pr.reviewers.find((r) => r.id === userId)?.vote ?? 0;
+        if (vote >= 5) {
+          if (prsWithCommentSet.has(pr.pullRequestId)) approvalsWithComments++;
+          else approvalsWithoutComments++;
+        }
+      }
+
       return {
         totalPrsAnalyzed: prs.length,
         analyzedFrom,
@@ -240,6 +255,8 @@ export function useUserProfile(userId: string, fetchLimit: number = 200, minTime
         completionRate: prs.length > 0 ? completedCount / prs.length : 0,
         approved,
         approvedWithSuggestions,
+        approvalsWithComments,
+        approvalsWithoutComments,
         waitingForAuthor,
         rejected,
         threadStatuses: Object.fromEntries(threadStatuses),
