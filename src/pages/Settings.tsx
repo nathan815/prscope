@@ -51,7 +51,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
     setTesting(true);
     setTestResult(null);
 
-    configureClient(orgInput, "pat", async () => patInput);
+    configureClient(orgInput);
 
     try {
       const data = await getConnectionData();
@@ -78,7 +78,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
       setAuthMode("oauth");
       await auth.login();
 
-      configureClient(orgInput, "oauth", auth.getToken);
+      configureClient(orgInput);
       try {
         const data = await getConnectionData();
         setUser(data.authenticatedUser.id, data.authenticatedUser.providerDisplayName);
@@ -102,17 +102,7 @@ export function Settings({ firstRun }: { firstRun?: boolean }) {
     setTesting(true);
     setTestResult(null);
 
-    const azCliTokenProvider = async () => {
-      const res = await fetch("/api/auth/az-cli-token");
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? `az cli token failed: ${res.status}`);
-      }
-      const data = (await res.json()) as { accessToken: string };
-      return data.accessToken;
-    };
-
-    configureClient(orgInput, "az-cli", azCliTokenProvider);
+    configureClient(orgInput);
 
     try {
       const data = await getConnectionData();

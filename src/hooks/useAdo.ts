@@ -7,12 +7,11 @@ import { configureClient } from "../api/client";
 import { useAuth } from "../auth/useAuth";
 import { useSelectedProjectsStore } from "../store/selectedProjects";
 import { getFeedCache, setFeedCache, type CachedFeedItem } from "../api/feedCache";
-import type { FavoriteRepo } from "../types";
 
 function useConfiguredClient() {
   const organization = useSettingsStore((s) => s.organization);
-  const { isAuthenticated, authMode, getToken, userId } = useAuth();
-  configureClient(organization, authMode, getToken);
+  const { isAuthenticated, userId } = useAuth();
+  configureClient(organization);
   return { organization, isConfigured: isAuthenticated, userId };
 }
 
@@ -56,19 +55,6 @@ export function useMultiProjectRepositories(projectNames: string[]) {
     },
     enabled: isConfigured && projectNames.length > 0,
     staleTime: 1000 * 60 * 5,
-  });
-}
-
-export function usePullRequests(
-  favoriteRepo: FavoriteRepo,
-  options: { status?: string; creatorId?: string; reviewerId?: string } = {},
-) {
-  const { isConfigured } = useConfiguredClient();
-  return useQuery({
-    queryKey: ["pullRequests", favoriteRepo.repoId, options],
-    queryFn: () => api.getPullRequests(favoriteRepo.projectName, favoriteRepo.repoId, options),
-    enabled: isConfigured,
-    staleTime: 1000 * 60 * 2,
   });
 }
 

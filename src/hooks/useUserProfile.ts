@@ -15,12 +15,12 @@ export function useUserProfile(
   reviewAnalysisLimit: number = 20,
 ) {
   const organization = useSettingsStore((s) => s.organization);
-  const { isAuthenticated, authMode, getToken } = useAuth();
+  const { isAuthenticated } = useAuth();
   const selectedProjects = useSelectedProjectsStore((s) => s.projects);
   const currentUserId = useSettingsStore((s) => s.userId);
   const isOwnProfile = userId === currentUserId;
 
-  configureClient(organization, authMode, getToken);
+  configureClient(organization);
   const isConfigured = isAuthenticated && userId.length > 0 && selectedProjects.length > 0;
 
   const prsQuery = useQuery({

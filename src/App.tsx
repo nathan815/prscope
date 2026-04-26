@@ -15,13 +15,13 @@ import { configureClient } from "./api/client";
 export default function App() {
   const theme = useSettingsStore((s) => s.theme);
   const organization = useSettingsStore((s) => s.organization);
-  const { isAuthenticated, authMode, getToken } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
-      configureClient(organization, authMode, getToken);
+      configureClient(organization);
     }
-  }, [isAuthenticated, organization, authMode, getToken]);
+  }, [isAuthenticated, organization]);
 
   useEffect(() => {
     const root = document.documentElement;
