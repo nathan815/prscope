@@ -2,6 +2,9 @@
 
 Azure DevOps PR dashboard for engineers who work across many repos. View your PRs, track reviews, follow teammates, and get AI-powered profile summaries.
 
+> [!NOTE]  
+> PRScope has now been folded into https://github.com/nathan815/ADO-Boost - Simply install the ADO Boost extension and you'll get this dashboard under the custom "PR Home" tab on ADO! 
+
 ## Features
 
 - **My PRs** — View PRs you created and are assigned to review, across all repos in your selected projects. Filter by status, time range, and repo.
